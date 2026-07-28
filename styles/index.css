@@ -367,40 +367,40 @@ body,
   justify-content: center;
 }
 
-.sample-demo-grid {
+.live-demo-grid {
   align-items: center;
   display: grid;
   gap: 28px;
-  grid-template-columns: 285px 90px 1fr;
-  margin-top: 18px;
+  grid-template-columns: 270px 100px 1fr;
+  margin-top: 10px;
 }
 
-.sample-screen {
+.live-demo-phone {
   border: 5px solid var(--ink);
   border-radius: 8px;
-  height: 330px;
+  height: 320px;
   padding: 15px;
 }
 
-.sample-screen > span {
+.live-demo-phone > span {
   display: block;
   font-size: 14px;
   font-weight: 800;
   margin-bottom: 14px;
 }
 
-.sample-camera {
+.live-demo-camera {
   align-items: center;
   background: #d9dee1;
   color: var(--muted);
   display: flex;
   font-family: "SFMono-Regular", Menlo, monospace;
   font-size: 13px;
-  height: 220px;
+  height: 210px;
   justify-content: center;
 }
 
-.sample-screen b {
+.live-demo-phone b {
   color: var(--coral);
   display: block;
   font-size: 16px;
@@ -409,7 +409,7 @@ body,
   text-align: center;
 }
 
-.sample-screen i {
+.live-demo-phone b i {
   background: var(--coral);
   border-radius: 50%;
   display: inline-block;
@@ -418,51 +418,84 @@ body,
   width: 10px;
 }
 
-.sample-demo-arrow {
+.live-demo-arrow {
   color: var(--coral);
   font-size: 42px;
   text-align: center;
 }
 
-.sample-demo-arrow small {
+.live-demo-arrow small {
   color: var(--muted);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
   font-size: 12px;
 }
 
-.sample-files {
+.live-demo-result {
+  display: grid;
+  gap: 18px;
+}
+
+.live-upload-strip {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(3, 1fr);
 }
 
-.sample-files > div {
+.live-upload-strip > div {
   border-top: 5px solid var(--coral);
   padding: 12px 8px 0;
 }
 
-.sample-files span,
-.sample-files b {
+.live-upload-strip span,
+.live-upload-strip b {
   display: block;
 }
 
-.sample-files span {
+.live-upload-strip span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
   font-size: 12px;
 }
 
-.sample-files b {
+.live-upload-strip b {
   font-family: "SFMono-Regular", Menlo, monospace;
   font-size: 13px;
   font-weight: 800;
   margin-top: 6px;
 }
 
-.sample-files pre {
-  grid-column: 1 / -1;
-  height: 190px;
+.live-demo-viewer {
+  background: var(--ink);
+  border-radius: 6px;
+  color: var(--white);
+  height: 210px;
+  padding: 26px 30px;
+}
+
+.live-demo-viewer > span {
+  color: #9ca7af;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 13px;
+}
+
+.live-demo-viewer b {
+  display: block;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 48px;
+  margin-top: 35px;
+}
+
+.live-demo-viewer b i {
+  color: var(--coral);
+  font-size: 28px;
+  font-style: normal;
+}
+
+.live-demo-viewer small {
+  color: #9ca7af;
+  display: block;
+  font-size: 13px;
   margin-top: 12px;
 }
 

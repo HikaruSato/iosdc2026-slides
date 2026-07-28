@@ -2,7 +2,8 @@
 
 「映像変換サーバーなしでiPhone端末内でHLSを生成してライブ配信」の発表スライドです。
 全74枚、40分想定です。`../../MomentNow-iOS` のHLS生成・S3アップロード実装を本編とし、
-`../iosdc2026HLSSample` はAVFoundationの生成処理をローカルで観察するための説明用サンプルとして扱います。
+`../iosdc2026HLSSample` はAVFoundationの生成処理を説明するためのコードサンプルで、
+iOSDC 2026のタイミングでpublic repositoryとして公開する予定です。発表デモは実際のアプリで行います。
 
 ## Commands
 

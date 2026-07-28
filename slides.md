@@ -69,33 +69,36 @@ class: statement
 
 ---
 
-<div class="kicker">SAMPLE DEMO</div>
+<div class="kicker">LIVE DEMO</div>
 
-# デモでは、S3へ送るDataをローカルファイルで観察する
+# 実機デモ：撮影しながら、ブラウザで追従再生する
 
-<div class="sample-demo-grid">
-  <div class="sample-screen">
-    <span>iOSDC HLS Sample</span>
-    <div class="sample-camera">Camera Preview</div>
-    <b><i></i> 録画中</b>
+<div class="live-demo-grid">
+  <div class="live-demo-phone">
+    <span>iPhone</span>
+    <div class="live-demo-camera">Camera Preview</div>
+    <b><i></i> 配信中</b>
   </div>
-  <div class="sample-demo-arrow">→<small>delegate</small></div>
-  <div class="sample-files">
-    <div><span>start</span><b>init.mp4</b></div>
-    <div><span>+2s</span><b>seg/000001.m4s</b></div>
-    <div><span>+4s</span><b>seg/000002.m4s</b></div>
-    <pre>#EXTM3U
-#EXT-X-MAP:URI="init.mp4"
-#EXTINF:2.000,
-seg/000001.m4s</pre>
+  <div class="live-demo-arrow">→<small>HLS → S3</small></div>
+  <div class="live-demo-result">
+    <div class="live-upload-strip">
+      <div><span>start</span><b>PUT init.mp4</b></div>
+      <div><span>+2s</span><b>PUT seg 1</b></div>
+      <div><span>after PUT</span><b>commit</b></div>
+    </div>
+    <div class="live-demo-viewer">
+      <span>CloudFront / Viewer</span>
+      <b>LIVE <i>+4.2s</i></b>
+      <small>playlist.m3u8を追従再生</small>
+    </div>
   </div>
 </div>
 
 <!--
 1:05
 
-サンプルで見せるのは、S3送信直前のinit Dataとmedia Dataです。
-ネットワークを外してファイルへ保存することで、AVFoundationが何を返したかを直接確認できるようにしています。
+発表当日は、実際のMomentNowアプリを使って実機デモを行います。
+iPhoneで撮影を開始し、別のブラウザがCloudFrontのplaylistを追従して再生するところを見せます。
 -->
 
 ---
@@ -226,13 +229,14 @@ API、保存、配信、状態管理は残ります。なくすのは、映像�
   <div><b>05</b><span>S3 uploadとcommit</span></div>
 </div>
 
-<div class="repo-line">github / iosdc2026HLSSample</div>
+<div class="repo-line">Public at iOSDC 2026 / iosdc2026HLSSample</div>
 
 <!--
 3:35
 
 HLSの最小形を確認し、Capture、Writer、S3 uploadの順に本番の処理を追います。
-サンプルコードは、iOSの生成処理を拡大して読むために使います。
+iosdc2026HLSSampleは、iOSDCのタイミングでpublic repositoryとして公開します。
+発表では、iOSの生成処理を拡大して読むために使います。
 -->
 
 ---
@@ -492,14 +496,14 @@ class: chapter
 <div class="chapter-no">02</div>
 <div class="chapter-rule"></div>
 
-# サンプルで<br>iOSの生成処理だけを拡大する
-<p>The same AVFoundation pipeline, with local files as a microscope</p>
+# 公開サンプルで<br>iOSの生成処理だけを拡大する
+<p>A public code sample for reading the AVFoundation pipeline</p>
 
 <!--
 7:20
 
-ここからサンプルでiOSの生成処理を拡大します。
-ローカル保存は最終構成ではなく、AVFoundationの出力を観察するための差し替えです。
+ここからiosdc2026HLSSampleでiOSの生成処理を拡大します。
+iOSDCのタイミングでpublic repositoryとして公開し、発表後も同じコードを追えるようにします。
 -->
 
 ---
@@ -531,7 +535,7 @@ class: chapter
 
 <div class="kicker">INTENTIONAL SCOPE</div>
 
-# ローカル保存は、S3送信前のDataを見るためだけ
+# 公開サンプルでは、S3を<br>ローカル保存へ置き換える
 
 <div class="scope-ledger">
   <div class="scope-in">
@@ -557,7 +561,7 @@ class: chapter
 <!--
 8:05
 
-サンプルはネットワーク失敗を混ぜず、AVFoundationから出たDataとplaylist規則を確認する教材です。
+公開サンプルはネットワーク失敗を混ぜず、AVFoundationから出たDataとplaylist規則を確認する教材です。
 発表の完成形は、このDataをHLSUploadCoordinatorがS3へ送る本番実装です。
 -->
 
@@ -1880,9 +1884,9 @@ UploaderへisLastを通知し、pending uploadがゼロになるまで画面をc
 
 ---
 
-<div class="kicker">WHY THE SAMPLE IS LOCAL</div>
+<div class="kicker">SAMPLE VS PRODUCTION</div>
 
-# ローカルサンプルは、本番のupload手前を可視化する
+# 公開サンプルと本番、違うのは保存先
 
 <div class="playback-compare">
   <div class="playback-path">
@@ -1902,12 +1906,12 @@ UploaderへisLastを通知し、pending uploadがゼロになるまで画面をc
   </div>
 </div>
 
-<div class="bottom-claim">サンプルのローカル保存は、最終アーキテクチャではない</div>
+<div class="bottom-claim">Data.write と presigned PUT。違うのはcallback後だけ</div>
 
 <!--
 29:10
 
-サンプルはS3やAPIを再現するものではありません。
+iosdc2026HLSSampleはS3やAPIを再現するものではありません。
 本番と共通なのはRecorderまでで、callback後はローカル保存ではなくUploaderへ接続します。
 -->
 
@@ -2100,5 +2104,5 @@ class: closing
 AVAssetWriterDelegateでiPhoneからfMP4を逐次取り出し、presigned PUTでS3へ送り、成功したseqをcommitします。
 Clock、Boundary、Upload、Finishの順序が揃って初めて、録画ではなくライブ配信になります。
 
-ローカルサンプルは、そのうちAVFoundationの生成処理を見える形にした教材です。ありがとうございました。
+公開サンプルは、そのうちAVFoundationの生成処理を読みやすくした教材です。ありがとうございました。
 -->
