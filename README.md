@@ -1,9 +1,11 @@
 # iOSDC Japan 2026 slides
 
 「映像変換サーバーなしでiPhone端末内でHLSを生成してライブ配信」の発表スライドです。
-全74枚、40分想定です。`../../MomentNow-iOS` のHLS生成・S3アップロード実装を本編とし、
-`../iosdc2026HLSSample` はAVFoundationの生成処理を説明するためのコードサンプルで、
-iOSDC 2026のタイミングでpublic repositoryとして公開する予定です。発表デモは実際のアプリで行います。
+本編63枚、付録16枚の全79枚で、40分想定です。最初に、短い動画ファイルと更新されるplaylistによってHLSがライブ配信に
+なる仕組みを説明します。その全体像へ今回の構成を当てはめたあと、`../iosdc2026HLSSample` を使い、
+iPhoneでHLSを生成してMacのHTTPサーバーへPUTし、保存された `init.mp4`、`.m4s`、
+`playlist.m3u8` をViewerで追従再生するデモを行います。その後、`../../MomentNow-iOS` のiOS実装を掘り下げ、
+ローカルのファイル保存をS3・presigned PUT・commit・CloudFrontへ置き換えた本番構成まで説明します。
 
 ## Commands
 
