@@ -86,6 +86,12 @@ HLSでは、長い動画を短い断片へ分け、その再生順を示すplayl
   </div>
 </div>
 
+<div class="hls-tag-legend">
+  <span><code>EXT-X-MAP</code><b>最初に読む設定ファイル</b></span>
+  <span><code>EXTINF</code><b>次のsegmentの長さ</b></span>
+  <span><code>URI</code><b>次に取得するファイル</b></span>
+</div>
+
 <div class="source">RFC 8216: Media Playlist / Media Segment / EXT-X-MAP</div>
 
 <!--
@@ -111,7 +117,7 @@ Playerはplaylistを取得し、そこに書かれた順でinitとsegmentを取�
   <div class="file-type init-file">
     <span class="file-ext">MP4</span>
     <b>init.mp4</b>
-    <small>codec / track情報</small>
+    <small>再生を始めるための設定</small>
   </div>
   <div class="file-type media-file">
     <span class="file-ext">M4S</span>
@@ -120,7 +126,7 @@ Playerはplaylistを取得し、そこに書かれた順でinitとsegmentを取�
   </div>
 </div>
 
-<div class="bottom-claim">playlistが、初期化情報とメディア断片を結びつける</div>
+<div class="bottom-claim">init.mp4（再生準備）+ m4s（約2秒）+ playlist（順番）= 最初の再生</div>
 
 <!--
 目次、初期化セグメント、メディアセグメントの3種類です。
@@ -139,7 +145,7 @@ initだけにも、m4sだけにも、完全な再生体験はありません。p
 <div class="event-timeline">
   <div class="event-phase">
     <span class="time">t = 0</span>
-    <b>header</b>
+    <b>playlistだけ</b>
     <small>segmentなし</small>
   </div>
   <div class="event-connector"></div>
@@ -161,6 +167,8 @@ initだけにも、m4sだけにも、完全な再生体験はありません。p
     <small>もう増えない</small>
   </div>
 </div>
+
+<div class="bottom-claim">Playerは同じplaylist.m3u8を繰り返しGETする</div>
 
 <div class="source">Apple: Event playlist construction / RFC 8216 §4.3.3</div>
 
@@ -204,6 +212,33 @@ API、保存、配信、状態管理は残ります。なくすのは、映像�
 -->
 
 ---
+
+<div class="kicker">WHY</div>
+<div class="story-split">
+  <div>
+    <h1>撮影後に待つほど、<br>共有したい瞬間から遠ざかる</h1>
+    <p class="lead">子どもの動画を家族へ送る。<br>撮影中から届けば、撮影後に待たせずに済む。</p>
+  </div>
+  <div class="why-files">
+    <div class="why-file large"><span>撮影終了後</span><b>recording.mov</b><small>大きな1ファイルを送信</small></div>
+    <div class="why-divider">↓</div>
+    <div class="why-segments">
+      <span>撮影中</span>
+      <b>init.mp4</b><b>001.m4s</b><b>002.m4s</b>
+      <small>小さく区切って順次送信</small>
+    </div>
+  </div>
+</div>
+
+<!--
+この実装のきっかけは、子どもの動画を家族へ送るときの待ち時間でした。
+撮影し終わってから大きなファイルを送るのではなく、撮影中から小さく届けたい。それがHLSを選んだ理由です。
+
+個人開発では、映像変換サーバーの常時運用が重い。
+そこで用途を絞り、カメラを持っているiPhone自身にエンコードとセグメント生成を任せます。
+-->
+
+---
 layout: center
 class: statement
 ---
@@ -213,13 +248,13 @@ class: statement
 # iPhoneが生成したHLSを<br><span class="accent-coral">撮影中からS3へ公開する</span>
 
 <div class="result-flow end-to-end">
-  <div class="result-step"><b>Capture</b><span>CMSampleBuffer</span></div>
+  <div class="result-step"><b>映像と音声を受け取る</b><span>Camera + Mic</span></div>
   <div class="result-arrow">→</div>
-  <div class="result-step strong"><b>AVAssetWriter</b><span>init.mp4 + m4s</span></div>
+  <div class="result-step strong"><b>約2秒に分ける</b><span>AVAssetWriter</span></div>
   <div class="result-arrow">→</div>
-  <div class="result-step"><b>presigned PUT</b><span>S3 object</span></div>
+  <div class="result-step"><b>S3へ保存する</b><span>一時PUT URL</span></div>
   <div class="result-arrow">→</div>
-  <div class="result-step"><b>commit</b><span>playlist → Viewer</span></div>
+  <div class="result-step"><b>再生順を公開する</b><span>commit API</span></div>
 </div>
 
 <!--
@@ -313,9 +348,9 @@ class: demo-step
 <div class="tap-to-bytes">
   <div class="tap-button">● 配信開始</div>
   <i>→</i>
-  <div><b>Camera + Mic</b><span>CMSampleBuffer</span></div>
+  <div><b>Camera + Mic</b><span>映像・音声sample</span></div>
   <i>→</i>
-  <div class="hot"><b>AVAssetWriter</b><span>fMP4 Data</span></div>
+  <div class="hot"><b>AVAssetWriter</b><span>init.mp4 + m4s</span></div>
 </div>
 
 <div class="demo-observe-line">
@@ -344,7 +379,7 @@ class: demo-step
 <div class="object-arrival">
   <div class="arrival-time"><b>t ≈ 0</b><span>initialization callback</span></div>
   <i>→</i>
-  <div class="arrival-object init"><b>init.mp4</b><span>codec / track / timescale</span></div>
+  <div class="arrival-object init"><b>init.mp4</b><span>再生を始めるための設定</span></div>
   <i>→</i>
   <div class="arrival-path"><code>PUT /streams/{id}/init.mp4</code></div>
 </div>
@@ -368,10 +403,14 @@ class: demo-step
 
 # 以後は約2秒ごとに、2つのPUTが続く
 
-<div class="put-pairs">
-  <div class="put-pair"><span>segment 1</span><b>PUT 000001.m4s</b><i>then</i><b>PUT playlist.m3u8</b></div>
-  <div class="put-pair"><span>segment 2</span><b>PUT 000002.m4s</b><i>then</i><b>PUT playlist.m3u8</b></div>
-  <div class="put-pair future"><span>segment N</span><b>PUT 00000N.m4s</b><i>then</i><b>PUT playlist.m3u8</b></div>
+<div class="put-sequence">
+  <div><span>segment 1</span><b>PUT 000001.m4s</b></div>
+  <i>→</i>
+  <div class="playlist-step"><span>公開</span><b>PUT playlist.m3u8</b></div>
+  <i>→</i>
+  <div><span>segment 2</span><b>PUT 000002.m4s</b></div>
+  <i>→</i>
+  <div class="playlist-step"><span>公開</span><b>PUT playlist.m3u8</b></div>
 </div>
 
 <div class="bottom-claim">playlistが指すのは、保存に成功したsegmentだけ</div>
@@ -385,7 +424,7 @@ class: demo-step
 -->
 
 ---
-class: demo-step
+class: demo-step viewer-demo-step
 ---
 
 <div class="kicker">DEMO · 5 / 5</div>
@@ -445,33 +484,6 @@ initが1つ、更新されるplaylistが1つ、2秒単位のm4sが18個ありま
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
 - iosdc2026HLSSample/server/data/streams/stream-20260818-225315-C7A2AB11
--->
-
----
-
-<div class="kicker">WHY</div>
-<div class="story-split">
-  <div>
-    <h1>撮影後に待つほど、<br>共有したい瞬間から遠ざかる</h1>
-    <p class="lead">子どもの動画を家族へ送る。<br>撮影中から届き始めれば、終了後の待ち時間を減らせる。</p>
-  </div>
-  <div class="why-files">
-    <div class="why-file large"><span>撮影終了後</span><b>recording.mov</b><small>大きな1ファイルを送信</small></div>
-    <div class="why-divider">↓</div>
-    <div class="why-segments">
-      <span>撮影中</span>
-      <b>init.mp4</b><b>001.m4s</b><b>002.m4s</b>
-      <small>小さく区切って順次送信</small>
-    </div>
-  </div>
-</div>
-
-<!--
-デモで実現したかった背景へ戻ります。きっかけは、子どもの動画を家族へ送るときの待ち時間でした。
-撮影し終わってから大きなファイルを送るのではなく、撮影中から小さく届けたい。それがHLSを選んだ理由です。
-
-個人開発では、映像変換サーバーの常時運用が重い。
-そこで用途を絞り、カメラを持っているiPhone自身にエンコードとセグメント生成を任せます。
 -->
 
 ---
@@ -593,19 +605,15 @@ playlistはcommit APIが更新し、CloudFront経由のViewerは同じ相対URI�
 
 # fMP4は「設定」と「再生可能な断片」を分ける
 
-<div class="box-anatomy">
-  <div class="box-group init-group">
-    <div class="iso-box"><b>ftyp</b><span>file type</span></div>
-    <div class="iso-box wide"><b>moov</b><span>tracks / codec</span></div>
-    <small>init.mp4</small>
-  </div>
-  <div class="box-plus">+</div>
-  <div class="box-group media-group">
-    <div class="iso-box"><b>moof</b><span>fragment metadata</span></div>
-    <div class="iso-box wide"><b>mdat</b><span>encoded samples</span></div>
-    <small>000001.m4s</small>
-  </div>
+<div class="fmp4-beginner-model">
+  <div class="fmp4-init"><span>1配信に1つ</span><b>init.mp4</b><small>Playerが再生を始めるための設定</small></div>
+  <i>+</i>
+  <div class="fmp4-media"><span>約2秒ごと</span><b>000001.m4s</b><small>実際の映像と音声</small></div>
+  <i>=</i>
+  <div class="fmp4-playable"><span>playlistが結ぶ</span><b>再生可能</b><small>Playerはこの組み合わせを取得</small></div>
 </div>
+
+<div class="bottom-claim">ftyp / moov / moof / mdatというbox名はAppendixで扱う</div>
 
 <div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter</div>
 
@@ -627,15 +635,15 @@ AVAssetWriterDelegateは、この単位のDataを返してくれます。
     <ul>
       <li>H.264 / AAC</li>
       <li>init.mp4</li>
-      <li>separable m4s</li>
+      <li>約2秒のmedia segment</li>
     </ul>
   </div>
   <div class="ownership-divider">/</div>
   <div class="ownership-side app-side">
     <span>App</span>
-    <b>seq + PUT + commit</b>
+    <b>順番を付けて公開</b>
     <ul>
-      <li>sequence番号</li>
+      <li>再生順番号（seq）</li>
       <li>S3 upload</li>
       <li>公開可能なseqを通知</li>
     </ul>
@@ -783,8 +791,6 @@ uploadTask = Task {
 try await recorder.startRecording()
 ```
 
-<div class="code-caption">最初のinitialization callbackを取りこぼさない</div>
-
 <!--
 startRecordingでは、先にcallbackとconsumerを接続し、最後にRecorderを開始します。
 順番を逆にすると、Writerがすぐ返したinit Dataを誰も受け取れない窓ができます。
@@ -885,7 +891,7 @@ MovieFileOutputではなくDataOutputを使うのは、AVAssetWriterへsampleを
 
 ---
 
-<div class="kicker">INPUT FORMAT</div>
+<div class="kicker">AVFOUNDATION COMMON · INPUT FORMAT</div>
 
 # CameraのNV12をWriterがH.264に圧縮
 
@@ -901,6 +907,8 @@ videoOutput.videoSettings = [
         kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
 ]
 ```
+
+<div class="bottom-claim">ここはHLS固有ではなく、通常のcapture → encode処理</div>
 
 <div class="source">HLSSegmentRecorder.setupCaptureSessionLocked()</div>
 
@@ -961,21 +969,23 @@ Writerのsessionは最初のvideo sampleで開始します。
 
 ---
 
-<div class="kicker">TWO CLOCKS</div>
+<div class="kicker">PTS = SAMPLEの撮影時刻</div>
 
-# Capture PTSはHLSの開始時刻ではない
+# sampleの撮影時刻を、Writerの開始時刻へ移す
 
 <div class="dual-axis">
   <div class="axis-row">
-    <b>Capture PTS</b>
+    <b>Capture PTS<small>sampleに付く撮影時刻</small></b>
     <div class="axis-line"><span class="axis-value source-value">58342.31</span><i></i><i></i><i></i><em>…</em></div>
   </div>
   <div class="axis-transform">− firstVideoPTS + 10s</div>
   <div class="axis-row target">
-    <b>HLS timeline</b>
+    <b>Writer timeline<small>この配信内の時刻</small></b>
     <div class="axis-line"><span class="axis-value target-value">10.00</span><i></i><i></i><i></i><em>…</em></div>
   </div>
 </div>
+
+<div class="bottom-claim warning">10秒起点は今回のWriter設定。HLS仕様の固定値ではない</div>
 
 <div class="source">CMSampleBuffer presentationTimeStamp / writer.initialSegmentStartTime</div>
 
@@ -1098,8 +1108,8 @@ writer.delegate = self
 <div class="writer-output-model">
   <div class="writer-shape"><b>AVAssetWriter</b><span>MP4 content type</span></div>
   <div class="output-split">
-    <span>initialization Data</span>
-    <span>separable Data</span>
+    <span>init.mp4<br><small>再生準備</small></span>
+    <span>media segment<br><small>約2秒のData</small></span>
   </div>
 </div>
 
@@ -1112,7 +1122,7 @@ HLS profileとdelegateを設定すると、初期化セグメントと分離可�
 
 ---
 
-<div class="kicker">FOUR HLS KNOBS</div>
+<div class="kicker">HLS-SPECIFIC · FOUR KNOBS</div>
 
 # HLS出力は、4つのpropertyで有効になる
 
@@ -1180,6 +1190,8 @@ property名の通り、2秒は希望間隔です。
 ```swift
 AVVideoMaxKeyFrameIntervalDurationKey: config.segmentSeconds
 ```
+
+<div class="term-definition"><b>IDR</b><span>ほかのframeを参照せず、そこから再生を始められるkeyframe</span></div>
 
 <div class="source">Apple HLS Authoring Specification: video segments start with an IDR frame</div>
 
@@ -1286,9 +1298,11 @@ S3 uploadのbacklogとは別の層なので、Writer dropとpending uploadは別
   </div>
 </div>
 
-<div class="manifest-preview">
-  <code>init object exists</code><code>seg 1 object exists</code>
-  <code>playlist contains seq 1</code><code>Viewer can start</code>
+<div class="playable-equation">
+  <span>init.mp4<br><small>保存済み</small></span><i>+</i>
+  <span>000001.m4s<br><small>保存済み</small></span><i>+</i>
+  <span>playlist<br><small>seq 1を公開済み</small></span><i>=</i>
+  <b>Viewer<br>再生開始</b>
 </div>
 
 <!--
@@ -1298,9 +1312,9 @@ initと最初のm4sがS3に存在し、seq 1のcommitでplaylistへ載った時�
 
 ---
 
-<div class="kicker">COPY, UPLOAD, COMMIT</div>
+<div class="kicker">PUBLIC SAMPLE · LOCAL PLAYLIST</div>
 
-# playlist状態は、PUT成功後にだけ進める
+# サンプルは、playlistのPUT成功後に状態を確定
 
 ```swift {1-3|4-6}
 var nextManifest = manifest
@@ -1315,8 +1329,10 @@ manifest = nextManifest
   <i>copy</i>
   <div><span>candidate</span><b>+ segment N+1</b></div>
   <i>PUT 2xx</i>
-  <div class="hot"><span>commit</span><b>current = candidate</b></div>
+  <div class="hot"><span>local stateを確定</span><b>current = candidate</b></div>
 </div>
+
+<div class="bottom-claim">後半のcommit APIとは別。ここではiPhone自身がplaylist本文を書く</div>
 
 <!--
 サンプルのHLSManifestは文字列への追記ログではなく、seqをkeyにした値です。
@@ -1375,6 +1391,27 @@ class: chapter
 
 ここから本番のiOS実装です。
 AVAssetWriterDelegateのDataを、HLSUploadCoordinatorがS3へ公開する流れを追います。
+-->
+
+---
+
+<div class="kicker">THREE REQUESTS · THIS PRODUCTION DESIGN</div>
+
+# 本番は、presign → PUT → commitに分担
+
+<div class="settings-table">
+  <div class="settings-head"><span>REQUEST</span><span>DESTINATION</span><span>ROLE</span></div>
+  <div><code>POST /presign</code><b>API</b><span>seq用PUT URLを発行</span></div>
+  <div><code>PUT putUrl</code><b>S3</b><span>video/mp4 Dataを保存</span></div>
+  <div><code>POST /commit</code><b>API</b><span>seqをplaylistへ公開</span></div>
+  <div><code>GET playbackUrl</code><b>CloudFront</b><span>Viewerがplaylistを取得</span></div>
+</div>
+
+<div class="bottom-claim">commit APIはHLSの必須要素ではなく、今回選んだ公開制御</div>
+
+<!--
+presignは権限発行、PUTはbytes保存、commitは公開可否です。
+HLSとして必要なのは、segmentの保存後にplaylistへ載せる順序です。今回はその公開確定をサーバーのcommit APIへ任せました。
 -->
 
 ---
@@ -1482,6 +1519,8 @@ S3 PUTが成功した後だけcommitし、サーバーへplaylistへ載せてよ
   </div>
 </div>
 
+<div class="bottom-claim">サーバーが「この1ファイルだけPUTしてよいURL」を一時発行する</div>
+
 ```swift
 var request = URLRequest(url: presignedURL)
 request.httpMethod = "PUT"
@@ -1516,6 +1555,31 @@ iOSアプリはS3のcredentialを持ちません。
 <!--
 順序が重要です。
 PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで見つけたURIをGETして404になります。
+-->
+
+---
+
+<div class="kicker">OUT-OF-ORDER RACE</div>
+
+# uploadの完了順は、生成順とは限らない
+
+<div class="race-lanes">
+  <div class="race-row"><b>seg 1</b><span class="race-bar slow">upload 1</span><em>commit 1</em></div>
+  <div class="race-row"><b>seg 2</b><span class="race-bar fast">upload 2</span><em class="early">commit 2</em></div>
+  <div class="race-row"><b>seg 3</b><span class="race-bar medium">upload 3</span><em>commit 3</em></div>
+</div>
+
+<div class="order-equation">
+  <span>completion</span><code>2, 1, 3</code>
+  <b>≠</b>
+  <span>playback</span><code>1, 2, 3</code>
+</div>
+
+<div class="bottom-claim warning">今回のcommit APIは、欠番より先をplaylistへ出さない契約</div>
+
+<!--
+actorでもawait中は別segmentが進むため、seg 2がseg 1より先にPUT完了する可能性があります。
+iOSはseqを必ず送り、今回のcommit APIは連続した番号だけをplaylistへ出す契約にします。
 -->
 
 ---
@@ -1631,60 +1695,14 @@ callback内ではTaskを作るだけにし、ネットワークawaitはSwift Con
 
 ---
 
-<div class="kicker">THREE REQUESTS</div>
-
-# presign・PUT・commitは、役割が違う
-
-<div class="settings-table">
-  <div class="settings-head"><span>REQUEST</span><span>DESTINATION</span><span>ROLE</span></div>
-  <div><code>POST /presign</code><b>API</b><span>seq用PUT URLを発行</span></div>
-  <div><code>PUT putUrl</code><b>S3</b><span>video/mp4 Dataを保存</span></div>
-  <div><code>POST /commit</code><b>API</b><span>seqをplaylistへ公開</span></div>
-  <div><code>GET playbackUrl</code><b>CloudFront</b><span>Viewerがplaylistを取得</span></div>
-</div>
-
-<div class="bottom-claim">iOSはplaylist本文を書かず、「公開してよいseq」をcommitする</div>
-
-<!--
-presignは権限発行、PUTはbytes保存、commitは公開可否です。
-責任を分けることで、iOSへAWS credentialもplaylist更新競合も持ち込みません。
--->
-
----
-
-<div class="kicker">OUT-OF-ORDER RACE</div>
-
-# uploadの完了順は、生成順とは限らない
-
-<div class="race-lanes">
-  <div class="race-row"><b>seg 1</b><span class="race-bar slow">upload 1</span><em>commit 1</em></div>
-  <div class="race-row"><b>seg 2</b><span class="race-bar fast">upload 2</span><em class="early">commit 2</em></div>
-  <div class="race-row"><b>seg 3</b><span class="race-bar medium">upload 3</span><em>commit 3</em></div>
-</div>
-
-<div class="order-equation">
-  <span>completion</span><code>2, 1, 3</code>
-  <b>≠</b>
-  <span>playback</span><code>1, 2, 3</code>
-</div>
-
-<div class="bottom-claim warning">commit APIは、欠番より先をplaylistへ出さない契約が必要</div>
-
-<!--
-actorでもawait中は別segmentが進むため、seg 2がseg 1より先にPUT完了する可能性があります。
-iOSはseqを必ず送り、commit APIは連続した番号だけをplaylistへ出す契約にします。
--->
-
----
-
 <div class="kicker">SAMPLE → PRODUCTION</div>
 
-# 本番化では、4つの運用機能を足す
+# 本番では、HLSの外側に4つの制御を足す
 
 <div class="production-additions">
   <div><b>AUTH</b><span>user / group ownership</span></div>
   <div><b>PRESIGN</b><span>object単位の短期PUT権限</span></div>
-  <div><b>COMMIT</b><span>ETag / If-Matchでplaylist競合制御</span></div>
+  <div><b>COMMIT</b><span>公開順とplaylistの同時更新を制御</span></div>
   <div><b>DELIVERY</b><span>CloudFront / ticket / status</span></div>
 </div>
 
@@ -1757,13 +1775,13 @@ class: closing
 
 <div class="kicker">TAKEAWAYS</div>
 
-# 成立条件は、4つの順序をそろえること
+# HLSライブ配信は、4つの順序で成立する
 
 <div class="takeaway-grid">
-  <div><b>01</b><span><strong>Clock</strong>Capture PTSをWriterのtimelineへ移す</span></div>
-  <div><b>02</b><span><strong>Boundary</strong>IDRとsegment intervalをそろえる</span></div>
-  <div><b>03</b><span><strong>Upload</strong>DataをS3へPUTしてからcommitする</span></div>
-  <div><b>04</b><span><strong>Finish</strong>pendingが0になるまで完了にしない</span></div>
+  <div><b>01</b><span><strong>時刻 · Clock</strong>Capture PTSをWriterのtimelineへ移す</span></div>
+  <div><b>02</b><span><strong>区切り · Boundary</strong>IDRとsegment intervalをそろえる</span></div>
+  <div><b>03</b><span><strong>公開 · Upload</strong>DataをS3へPUTしてからcommitする</span></div>
+  <div><b>04</b><span><strong>終了 · Finish</strong>pendingが0になるまで完了にしない</span></div>
 </div>
 
 <div class="closing-footer">
@@ -1834,7 +1852,7 @@ class: chapter
 
 <div class="kicker">CONFIG</div>
 
-# 上り回線に合わせて、配信品質を3段階から選ぶ
+# 上り回線に合わせて、配信品質を選ぶ
 
 ```swift
 let profile: (CGSize, Int) = switch quality {
@@ -1914,7 +1932,7 @@ if let connection = videoOutput.connection(with: .video),
 
 <div class="kicker">COPY TIMING</div>
 
-# Media bytesは変えず、timing metadataをコピーする
+# 映像・音声は変えず、時刻情報だけを補正
 
 ```swift {3-8}
 let timingInfos = try sampleTimingInfos().map { info in
@@ -2062,8 +2080,6 @@ recorder.onMediaSegment = { [uploader, fragmentSeconds] seq, data, _ in
 }
 ```
 
-<div class="source">LiveHLSStreamer.startRecording / AVAssetSegmentReport</div>
-
 <!--
 現在の本番実装もreportを受け取りますが、commitにはfragmentSecondsの2.0を渡しています。
 実segmentは必ずしもぴったり2秒ではないため、reportからdurationを取り出すのが次の精度改善です。
@@ -2098,7 +2114,7 @@ segment保存が3回とも失敗した場合、playlist PUTへ進まず、Coordi
 
 <div class="kicker">UI OBSERVATION LOOP</div>
 
-# ViewModelは300msごとに、配信状態をsnapshotする
+# ViewModelは300msごとに、配信状態を更新
 
 ```swift {2-10}
 monitorTask = Task {
@@ -2161,7 +2177,7 @@ Macサーバーはrequest bodyをdestinationへ直接書きません。
   <div class="immutable"><b>static assets</b><span>max-age=86400</span><code>Viewer UI</code></div>
 </div>
 
-<div class="bottom-claim">この区別は、S3 + CloudFrontでもそのまま使う</div>
+<div class="bottom-claim compact">この区別は、S3 + CloudFrontでもそのまま使う</div>
 
 <!--
 playlistは同じURLの内容が増えるためキャッシュさせません。

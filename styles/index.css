@@ -177,6 +177,11 @@ body,
   color: #805b0c;
 }
 
+.bottom-claim.compact {
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
 .code-caption {
   border-left: 4px solid var(--coral);
   color: var(--muted);
@@ -3816,6 +3821,10 @@ body,
   z-index: 2;
 }
 
+.viewer-demo-step > * {
+  transform: translateY(48px);
+}
+
 .demo-command-layout {
   align-items: stretch;
   display: grid;
@@ -4596,8 +4605,8 @@ body,
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(5, 1fr);
-  margin-top: 18px;
-  padding-top: 18px;
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
 .monitor-strip span {
@@ -4713,6 +4722,201 @@ body,
   color: var(--coral);
   font-family: "SFMono-Regular", Menlo, monospace;
   font-size: 40px;
+}
+
+/* Beginner-facing HLS explanations */
+.hls-tag-legend {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 18px;
+}
+
+.hls-tag-legend span {
+  align-items: baseline;
+  border-top: 3px solid var(--cobalt);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 9px;
+}
+
+.hls-tag-legend code {
+  color: var(--cobalt);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.hls-tag-legend b {
+  color: var(--ink);
+  font-size: 17px;
+}
+
+.put-sequence {
+  align-items: stretch;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr 30px 1fr 30px 1fr 30px 1fr;
+  margin-top: 62px;
+}
+
+.put-sequence > div {
+  border-top: 6px solid var(--cobalt);
+  padding: 18px 8px 0;
+}
+
+.put-sequence > div.playlist-step {
+  border-color: var(--coral);
+}
+
+.put-sequence span,
+.put-sequence b {
+  display: block;
+}
+
+.put-sequence span {
+  color: var(--muted);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 16px;
+}
+
+.put-sequence b {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 17px;
+  margin-top: 10px;
+}
+
+.put-sequence > i {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 25px;
+  font-style: normal;
+  justify-content: center;
+}
+
+.fmp4-beginner-model {
+  align-items: stretch;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 35px 1fr 35px 1fr;
+  margin-top: 68px;
+}
+
+.fmp4-beginner-model > div {
+  border-top: 6px solid var(--cobalt);
+  min-height: 155px;
+  padding: 18px 16px 0;
+}
+
+.fmp4-beginner-model > div.fmp4-media {
+  border-color: var(--coral);
+}
+
+.fmp4-beginner-model > div.fmp4-playable {
+  border-color: var(--green);
+}
+
+.fmp4-beginner-model span,
+.fmp4-beginner-model b,
+.fmp4-beginner-model small {
+  display: block;
+}
+
+.fmp4-beginner-model span {
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.fmp4-beginner-model b {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 24px;
+  margin-top: 13px;
+}
+
+.fmp4-beginner-model small {
+  color: var(--muted);
+  font-size: 17px;
+  margin-top: 9px;
+}
+
+.fmp4-beginner-model > i {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 30px;
+  font-style: normal;
+  justify-content: center;
+}
+
+.term-definition {
+  align-items: baseline;
+  border-left: 5px solid var(--coral);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 55px 1fr;
+  margin-top: 14px;
+  padding: 7px 0 7px 14px;
+}
+
+.term-definition b {
+  color: var(--coral);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 19px;
+}
+
+.term-definition span {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.playable-equation {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr 24px 1fr 24px 1fr 24px 1fr;
+  margin-top: 32px;
+}
+
+.playable-equation span,
+.playable-equation b {
+  border-top: 4px solid var(--cobalt);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 18px;
+  min-height: 72px;
+  padding-top: 12px;
+  text-align: center;
+}
+
+.playable-equation span:nth-of-type(3) {
+  border-color: var(--coral);
+}
+
+.playable-equation b {
+  border-color: var(--green);
+}
+
+.playable-equation small {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.playable-equation i {
+  color: var(--muted);
+  font-size: 22px;
+  font-style: normal;
+  text-align: center;
+}
+
+.dual-axis .axis-row > b small,
+.output-split small {
+  color: var(--muted);
+  display: block;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 5px;
 }
 
 /* Export and small-screen stability */
