@@ -53,7 +53,7 @@ class: chapter
 <p>短い動画ファイル + 更新され続けるplaylist</p>
 
 <!--
-[Timing checkpoint: 00:40]
+[Timing checkpoint: 00:45]
 
 最初に、HLSのライブ配信が何を配っているのかを大きく捉えます。
 HLSでは、長い動画を短い断片へ分け、その再生順を示すplaylistを配ります。ライブ中はplaylistが更新され続けます。
@@ -290,7 +290,7 @@ class: statement
 </div>
 
 <!--
-[Timing checkpoint: 03:00]
+[Timing checkpoint: 05:00]
 
 ここまで確認したHLSの仕組みを、公開サンプルで実際に動かします。
 iPhoneはHLSを生成してMacへHTTP PUTし、MacのViewerは同じファイルをHTTP GETして追従再生します。
@@ -505,7 +505,7 @@ initが1つ、更新されるplaylistが1つ、2秒単位のm4sが18個ありま
 <div class="bottom-claim">今回の難所は、各境界で「順序」を失わないこと</div>
 
 <!--
-[Timing checkpoint: 07:00]
+[Timing checkpoint: 10:00]
 
 大枠は4段階です。
 Capture、fMP4化、オブジェクト公開、playlist追従再生。境界を越えるたびに、時刻か順序の整合性が必要になります。
@@ -670,7 +670,7 @@ class: chapter
 <p>From a working stream to the AVFoundation pipeline</p>
 
 <!--
-[Timing checkpoint: 10:00]
+[Timing checkpoint: 13:30]
 
 HLSの全体像と冒頭で動かしたiosdc2026HLSSampleを、画面からHTTP PUTまで順に分解します。
 本番固有の認証やAWS構成を外し、HLS生成と公開順序を追える形にしています。
@@ -818,7 +818,7 @@ class: chapter
 <p>Camera, microphone, sample buffers, and one shared timeline</p>
 
 <!--
-[Timing checkpoint: 13:00]
+[Timing checkpoint: 16:00]
 
 ここからHLSSegmentRecorderを見ます。
 最初の難所はエンコード設定ではなく、映像と音声を同じ時間軸へ載せることです。
@@ -1088,7 +1088,7 @@ class: chapter
 <p>Four HLS settings and a segment delegate</p>
 
 <!--
-[Timing checkpoint: 20:00]
+[Timing checkpoint: 23:00]
 
 Captureの時計が揃ったので、次はAVAssetWriterの設定とdelegate出力を見ます。
 -->
@@ -1387,7 +1387,7 @@ class: chapter
 <p>Presign, PUT, commit, and finish from the iOS point of view</p>
 
 <!--
-[Timing checkpoint: 25:00]
+[Timing checkpoint: 29:30]
 
 ここから本番のiOS実装です。
 AVAssetWriterDelegateのDataを、HLSUploadCoordinatorがS3へ公開する流れを追います。
@@ -1561,7 +1561,7 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
 
 <div class="kicker">OUT-OF-ORDER RACE</div>
 
-# uploadの完了順は、生成順とは限らない
+# 現在のcommit APIはseq順へ並べ直すが、<br>欠番は待たない
 
 <div class="race-lanes">
   <div class="race-row"><b>seg 1</b><span class="race-bar slow">upload 1</span><em>commit 1</em></div>
@@ -1575,11 +1575,12 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
   <span>playback</span><code>1, 2, 3</code>
 </div>
 
-<div class="bottom-claim warning">今回のcommit APIは、欠番より先をplaylistへ出さない契約</div>
+<div class="bottom-claim warning">理想は、連続したseqまでだけを公開する「公開済み境界」を持つこと</div>
 
 <!--
 actorでもawait中は別segmentが進むため、seg 2がseg 1より先にPUT完了する可能性があります。
-iOSはseqを必ず送り、今回のcommit APIは連続した番号だけをplaylistへ出す契約にします。
+iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをseq順へ並べ直しますが、連続番号だけに制限する契約ではありません。seg 2が先なら、一時的にseg 2だけが公開されます。
+理想は、サーバーが連続したseqまでの「公開済み境界」を管理することです。
 -->
 
 ---
@@ -1593,7 +1594,7 @@ iOSはseqを必ず送り、今回のcommit APIは連続した番号だけをplay
     <b>didUploadInit</b><span>init.mp4の重複PUTを防ぐ</span><i class="green"></i>
   </div>
   <div class="concurrency-row">
-    <b>lastCommittedSeq</b><span>公開済み最大seq</span><i class="cobalt"></i>
+    <b>lastCommittedSeq</b><span>commit成功済みの最大seq</span><i class="cobalt"></i>
   </div>
   <div class="concurrency-row">
     <b>inUploadSegmentCount</b><span>停止時に待つbacklog</span><i class="coral"></i>
@@ -1608,20 +1609,21 @@ iOSはseqを必ず送り、今回のcommit APIは連続した番号だけをplay
 <!--
 Coordinatorはactorですが、presignやPUTのawait中に別segmentの処理が進みます。
 そのため到着順や完了順ではなく、seqとpending countを明示的な状態として持ちます。
+lastCommittedSeqはcommit成功済みの最大seqであり、それ以前のseqがすべて成功したことは保証しません。
 -->
 
 ---
 
 <div class="kicker">STOP CONTRACT</div>
 
-# stop後は<br>pending uploadが0になるまで完了にしない
+# 現状は、actorへ入った<br>uploadが0になるまで待つ
 
 <div class="publish-order four-step">
   <div class="publish-step"><b>1</b><span>recorder.stop()</span></div>
   <div class="publish-arrow">→</div>
   <div class="publish-step"><b>2</b><span>uploader.finish()</span></div>
   <div class="publish-arrow">→</div>
-  <div class="publish-step"><b>3</b><span>pending == 0を待つ</span></div>
+  <div class="publish-step"><b>3</b><span>actor内 pending == 0</span></div>
   <div class="publish-arrow">→</div>
   <div class="publish-step"><b>4</b><span>state = completed</span></div>
 </div>
@@ -1634,9 +1636,13 @@ while await streamer.hasPendingUploads() {
 
 <div class="source">LiveStreamViewModel.stop()</div>
 
+<div class="bottom-claim warning">理想はupload Task／イベント列そのものとfinal commitをawaitすること</div>
+
 <!--
 録画停止は、ネットワーク送信完了と同義ではありません。
-UploaderへisLastを通知し、pending uploadがゼロになるまで画面をcompletedへ進めません。
+現在の本番実装はUploaderへisLastを通知し、actor内のpending uploadがゼロになるまでcompletedへ進めません。
+ただし、onMediaSegmentで作ったTaskがactorに入る前はpending countへ反映されません。そのため、Taskが残っていてもpendingが0に見える余地があります。
+公開サンプルはAsyncStreamのconsumer Taskを保持し、channel.finish後にTaskの終了までawaitします。完了契約としてはこちらのほうが明確です。
 -->
 
 ---
@@ -1651,7 +1657,7 @@ class: chapter
 <p>Callback, task, upload backlog, and publication order</p>
 
 <!--
-[Timing checkpoint: 27:00]
+[Timing checkpoint: 34:00]
 
 最後に、iOS上のcallback、Task、actor、URLSessionを1本のライブ配信として整理します。
 焦点は、AVFoundationを止めずにネットワークの遅さを吸収する境界です。
@@ -1781,7 +1787,7 @@ class: closing
   <div><b>01</b><span><strong>時刻 · Clock</strong>Capture PTSをWriterのtimelineへ移す</span></div>
   <div><b>02</b><span><strong>区切り · Boundary</strong>IDRとsegment intervalをそろえる</span></div>
   <div><b>03</b><span><strong>公開 · Upload</strong>DataをS3へPUTしてからcommitする</span></div>
-  <div><b>04</b><span><strong>終了 · Finish</strong>pendingが0になるまで完了にしない</span></div>
+  <div><b>04</b><span><strong>終了 · Finish</strong>全送信とfinal commitの終了を待つ</span></div>
 </div>
 
 <div class="closing-footer">
@@ -1793,7 +1799,7 @@ class: closing
 </div>
 
 <!--
-[Timing checkpoint: 29:00]
+[Timing checkpoint: 37:30]
 
 まとめです。
 AVAssetWriterDelegateでiPhoneからfMP4を逐次取り出し、presigned PUTでS3へ送り、成功したseqをcommitします。
@@ -2087,9 +2093,9 @@ recorder.onMediaSegment = { [uploader, fragmentSeconds] seq, data, _ in
 
 ---
 
-<div class="kicker">RETRY POLICY</div>
+<div class="kicker">PUBLIC SAMPLE · RETRY POLICY</div>
 
-# 失敗時は、同じobjectを最大3回まで再送する
+# 公開サンプルは、同じobjectを<br>最大3回まで再送する
 
 <div class="retry-steps">
   <div><b>attempt 1</b><span>失敗</span><small>250 ms</small></div>
