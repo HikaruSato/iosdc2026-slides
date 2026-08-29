@@ -1840,9 +1840,7 @@ class: closing
 <div class="closing-footer">
   <div>
     <b>ありがとうございました</b>
-    <span>zenn.dev/hs7/articles/080eac650f65ba</span>
   </div>
-  <img src="/assets/zenn-qr.png" alt="QR code for the related Zenn article" />
 </div>
 
 <!--
@@ -1856,7 +1854,6 @@ Clock、Boundary、Upload、Finishの順序が揃って初めて、録画では�
 
 本編はここで終了します。
 -->
-
 
 ---
 layout: center
