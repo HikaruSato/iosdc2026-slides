@@ -801,14 +801,21 @@ segment生成とS3アップロードが続いている状態として扱い、st
 <div class="bottom-claim">1本の巨大なロックではなく、責任ごとに直列化する</div>
 
 <!--
-CaptureSessionとWriterは別のserial queue、S3 uploadとcommitの状態はactorで守ります。
-同じ「並行処理」でも、守る状態とAPIの制約が違うためです。
+CaptureSessionとWriterは別のserial queue、HLSの公開順はactorで守ります。
+ここでDispatchQueueを使うのは、Swift Concurrencyへ置き換えられなかったからではありません。
+
+AVCaptureSessionのstartRunningは呼び出し元をblockするため、Appleはserial queueで実行してメインqueueを塞がないよう案内しています。
+また、VideoDataOutputとAudioDataOutputのsetSampleBufferDelegateは、sampleを順番どおり届けるためserial callback queueを要求しています。
+そのためAVFoundationとの境界ではDispatchQueueを使い、生成したHLSFragment以降をAsyncThrowingStreamとactorで扱います。
 
 サンプルiOS側の責務分割です。
 画面状態、配信の組み立て、AVFoundation、公開順序、HTTPを別の型にしています。ここから中央のRecorderを深掘りします。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample
+- Apple: https://developer.apple.com/documentation/avfoundation/avcapturesession
+- Apple: https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutput/setsamplebufferdelegate(_:queue:)
+- Apple: https://developer.apple.com/documentation/avfoundation/avcaptureaudiodataoutput/setsamplebufferdelegate(_:queue:)
 -->
 
 ---
