@@ -1234,29 +1234,44 @@ HLS profileとdelegateを設定すると、初期化セグメントと分離可�
 
 <div class="kicker">PREFERRED INTERVAL</div>
 
-# 2秒は「希望」。境界は前後する
+# 2秒ぴったりではなく、2秒付近のIDRで切る
 
-<div class="interval-axis">
-  <div class="interval-target">
-    <span>0s</span><i></i><span>2s</span><i></i><span>4s</span><i></i><span>6s</span>
+<div class="segment-boundary-demo">
+  <div class="boundary-row preferred">
+    <b>希望</b>
+    <span>0.00s</span><i></i><span>2.00s</span><i></i><span>4.00s</span>
   </div>
-  <div class="interval-labels">
-    <span>preferred</span><span>preferred</span><span>preferred</span>
+  <div class="boundary-row actual">
+    <b>実際</b>
+    <span>IDR · 0.00s</span><i></i><span>IDR · 2.03s</span><i></i><span>IDR · 4.00s</span>
   </div>
 </div>
 
-```swift
-writer.preferredOutputSegmentInterval = CMTime(
-    seconds: config.segmentSeconds,
-    preferredTimescale: 600
-)
-```
+<div class="actual-duration-flow">
+  <div><small>segment 1</small><b>2.03s</b></div>
+  <div><small>segment 2</small><b>1.97s</b></div>
+  <span>→</span>
+  <div class="playlist-duration"><small>playlist</small><b>実durationをEXTINFへ</b></div>
+</div>
 
-<div class="bottom-claim warning">現在は2.0秒固定。segmentReport反映は改善項目</div>
+<div class="term-definition compact"><b>IDR</b><span>ほかのframeを参照せず、そこから単独で再生を始められるkeyframe</span></div>
+
+<div class="bottom-claim warning">2秒は設定値。playlistにはAVAssetSegmentReportの実durationを書く</div>
 
 <!--
-property名の通り、2秒は希望間隔です。
-境界にはキーフレームなどの条件があるため、実際の長さをsegment reportから取り出すのが安全です。
+preferredOutputSegmentIntervalのproperty名どおり、2秒は希望する間隔です。
+HLSのvideo segmentは、途中のframeを参照せず単独でデコードを始められるIDR frameから開始する必要があります。
+そのため希望位置が2.00秒でも、実際のIDRが2.03秒なら、segment境界は2.03秒まで前後します。
+この例では1本目が2.03秒、次が1.97秒です。常に2.0秒固定とは限りません。
+playlistのEXTINFには設定値の2秒ではなく、AVAssetSegmentReportが返すvideo trackの実durationを書きます。
+サンプルではreportが取得できない、またはdurationが無効な場合だけ設定値の2秒へfallbackします。
+次のページでは、希望位置の近くにIDRを用意するためのencoder設定を見ます。
+
+[Sources]
+- Apple: AVAssetWriter.preferredOutputSegmentInterval
+- Apple HLS Authoring Specification for Apple Devices
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLS/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLS/HLSManifest.swift
 -->
 
 ---
