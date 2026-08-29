@@ -1857,6 +1857,127 @@ body,
   text-align: right;
 }
 
+.sample-to-segment-flow {
+  align-items: stretch;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1.25fr 42px 0.72fr 42px 1.25fr;
+  margin-top: 28px;
+}
+
+.sample-flow-stack {
+  display: grid;
+  gap: 10px;
+  grid-template-rows: 1fr 1fr;
+}
+
+.sample-flow-node {
+  border-top: 5px solid var(--accent-secondary);
+  min-height: 70px;
+  padding: 9px 14px 6px;
+}
+
+.sample-flow-node.video,
+.sample-flow-node.media {
+  border-color: var(--accent-primary);
+}
+
+.sample-flow-node.init {
+  border-color: var(--success);
+}
+
+.sample-flow-node span,
+.sample-flow-node b,
+.sample-flow-node small {
+  display: block;
+}
+
+.sample-flow-node span {
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.sample-flow-node b {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 19px;
+  margin-top: 3px;
+}
+
+.sample-flow-node small {
+  color: var(--muted);
+  font-size: 17px;
+  margin-top: 2px;
+}
+
+.sample-flow-arrow {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 32px;
+  justify-content: center;
+}
+
+.sample-flow-writer {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 6px;
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+}
+
+.sample-flow-writer span {
+  color: var(--on-dark-muted);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 17px;
+}
+
+.sample-flow-writer b {
+  font-size: 23px;
+  line-height: 1.25;
+  margin-top: 9px;
+}
+
+.sample-term-grid {
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 24px;
+}
+
+.sample-term-grid > div {
+  min-width: 0;
+  padding: 11px 12px 10px;
+}
+
+.sample-term-grid > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.sample-term-grid b,
+.sample-term-grid span {
+  display: block;
+}
+
+.sample-term-grid b {
+  color: var(--accent-primary);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 17px;
+}
+
+.sample-term-grid span {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-top: 5px;
+}
+
 .format-bridge {
   align-items: center;
   display: grid;
@@ -2960,6 +3081,95 @@ body,
   color: var(--muted);
   font-size: 22px;
   text-align: center;
+}
+
+.drop-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 48px;
+}
+
+.drop-lane {
+  align-items: stretch;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 145px repeat(4, 1fr);
+}
+
+.drop-lane > b {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 4px;
+  color: var(--white);
+  display: flex;
+  font-size: 21px;
+  justify-content: center;
+}
+
+.drop-lane > span {
+  border-top: 5px solid var(--accent-secondary);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 20px;
+  min-height: 56px;
+  padding: 15px 10px 0;
+  text-align: center;
+}
+
+.drop-lane.writer > span {
+  align-items: center;
+  border-top: 0;
+  color: var(--white);
+  display: flex;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.drop-lane.writer > span.append {
+  background: var(--success);
+}
+
+.drop-lane.writer > span.busy {
+  background: var(--accent-secondary);
+}
+
+.drop-lane.writer > span.dropped {
+  background: var(--danger);
+}
+
+.drop-choice {
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 36px;
+}
+
+.drop-choice > div {
+  padding: 17px 22px 0;
+}
+
+.drop-choice > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.drop-choice span,
+.drop-choice b {
+  display: block;
+}
+
+.drop-choice span {
+  color: var(--muted);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.drop-choice b {
+  font-size: 23px;
+  margin-top: 7px;
+}
+
+.drop-choice-current span {
+  color: var(--accent-primary);
 }
 
 .output-clock {

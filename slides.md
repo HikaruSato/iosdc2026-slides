@@ -935,6 +935,47 @@ MovieFileOutputではなくDataOutputを使うのは、AVAssetWriterへsampleを
 
 ---
 
+<div class="kicker">SAMPLE ≠ SEGMENT</div>
+
+# 約2秒分のsampleをまとめたものがsegment
+
+<div class="sample-to-segment-flow">
+  <div class="sample-flow-stack inputs">
+    <div class="sample-flow-node video"><span>Camera</span><b>video CMSampleBuffer</b><small>約1 frame · 30fpsなら約33ms</small></div>
+    <div class="sample-flow-node audio"><span>Microphone</span><b>audio CMSampleBuffer</b><small>短い音声block</small></div>
+  </div>
+  <div class="sample-flow-arrow">→</div>
+  <div class="sample-flow-writer"><span>AVAssetWriter</span><b>encode<br>+ segment</b></div>
+  <div class="sample-flow-arrow">→</div>
+  <div class="sample-flow-stack outputs">
+    <div class="sample-flow-node init"><span>1配信に1つ</span><b>init.mp4</b><small>codec · trackなどの再生設定</small></div>
+    <div class="sample-flow-node media"><span>約2秒ごと</span><b>000001.m4s</b><small>video + audio sample本体</small></div>
+  </div>
+</div>
+
+<div class="sample-term-grid">
+  <div><b>video sample</b><span>カメラから届く約1 frame分</span></div>
+  <div><b>audio sample</b><span>マイクから届く短い音声block</span></div>
+  <div><b>media segment</b><span>約2秒分のvideo / audio sample</span></div>
+  <div><b>initialization segment</b><span>再生開始に必要な設定</span></div>
+</div>
+
+<!--
+ここでいうsampleはファイルではありません。videoなら約1 frame分、audioなら短い音声blockのCMSampleBufferです。
+
+AVAssetWriterが多数のsampleをエンコードし、約2秒分ずつmedia segmentへまとめます。
+30fpsなら1つのsegmentにおよそ60個のvideo sampleが入ります。実際の境界はkeyframeにより前後します。
+
+init.mp4は最初のvideo sampleではなく、codecやtrackなどの再生設定を持つinitialization segmentです。
+最初のvideo sampleを含む映像・音声本体は、最初のm4sへ入ります。
+
+[Sources]
+- Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
 <div class="kicker">AVFOUNDATION COMMON · INPUT FORMAT</div>
 
 # CameraのNV12をWriterがH.264に圧縮
@@ -1304,26 +1345,38 @@ Captureが続く間にfragmentがdelegateへ届くため、生成と保存・upl
 
 <div class="kicker">BACKPRESSURE DECISION</div>
 
-# Writerが詰まっても、Captureを待たせない
+# Writerが詰まったら、古いsampleを捨てる
 
-<div class="backpressure-map">
-  <div class="bp-source"><b>DataOutput</b><span>real-time push</span></div>
-  <div class="bp-gate"><code>isReadyForMoreMediaData</code></div>
-  <div class="bp-branches">
-    <div class="bp-yes"><b>true</b><span>append</span></div>
-    <div class="bp-no"><b>false</b><span>return / drop</span></div>
+<div class="drop-timeline">
+  <div class="drop-lane"><b>Camera</b><span>frame 1</span><span>frame 2</span><span>frame 3</span><span>frame 4</span></div>
+  <div class="drop-lane writer"><b>Writer</b><span class="append">append</span><span class="append">append</span><span class="busy">busy</span><span class="dropped">drop</span></div>
+</div>
+
+<div class="drop-choice">
+  <div class="wait-choice">
+    <span>待って貯める</span>
+    <b>古い映像が残り、遅延が増える</b>
+  </div>
+  <div class="drop-choice-current">
+    <span>待たずに落とす</span>
+    <b>少しカクつくが、現在へ追いつく</b>
   </div>
 </div>
 
-<div class="tradeoff-line">
-  <span>長所: latencyとmemoryがbounded</span>
-  <span>代償: frame dropを観測していない</span>
-</div>
+<div class="bottom-claim warning"><code>isReadyForMoreMediaData == false</code> は意図的なdrop</div>
 
 <!--
-Writerが詰まったときにsampleを貯めるqueueはありません。
-遅延とメモリを制限できる一方、drop数を記録していません。
-S3 uploadのbacklogとは別の層なので、Writer dropとpending uploadは別々に観測します。
+DataOutputは一定間隔でsampleをpushし続けます。WriterがbusyでisReadyForMoreMediaDataがfalseなら、sampleを保留せずreturnします。
+この場合は意図的なdropです。Writerが受け取れるようになった後の新しいsampleから、すぐappendを再開します。
+
+sampleをqueueへ貯めれば完全性は上がりますが、古い映像を後から送るためライブ遅延とメモリ使用量が増えます。
+このサンプルは少しのframe dropを許容し、視聴者へ現在に近い映像を届ける方を優先します。
+
+isReadyForMoreMediaDataがtrueなのにappendがfalseを返す場合は、意図的なdropではありません。Writerの失敗としてstreamをerrorで閉じます。
+
+[Sources]
+- Apple: AVAssetWriterInput.isReadyForMoreMediaData
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
 ---
