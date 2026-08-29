@@ -356,7 +356,6 @@ class: demo-step
 <div class="demo-observe-line">
   <span>elapsed <b>0.0 →</b></span>
   <span>segment <b>0 →</b></span>
-  <span>pending upload <b>0 →</b></span>
 </div>
 
 <!--
@@ -388,11 +387,11 @@ class: demo-step
 
 <!--
 delegateの最初のcallbackはinitializationです。
-UploadCoordinatorはinit.mp4の成功を覚え、これが済むまでmedia segmentを受け付けません。
+HLSStreamPublisherはinit.mp4の成功を覚え、これが済むまでmedia segmentを受け付けません。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 -->
 
 ---
@@ -420,7 +419,7 @@ class: demo-step
 大事なのは、m4sをPUTしてからplaylistを置き換える順番です。Playerが404になる参照を先に公開しません。
 
 [Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 -->
 
 ---
@@ -474,7 +473,7 @@ class: demo-step
 <div class="bottom-claim">サーバーに残るのは、変換前の映像ではなく「再生可能なHLSオブジェクト」</div>
 
 <!--
-停止時は、Writerを閉じて最後のsegmentを受け取ったあと、AsyncStreamをfinishします。
+停止時は、Writerを閉じて最後のsegmentを受け取ったあと、AsyncThrowingStreamをfinishします。
 すべてのイベントを処理した最後にENDLIST付きplaylistをPUTします。
 
 これはリポジトリに残っている実際の出力です。
@@ -482,7 +481,7 @@ initが1つ、更新されるplaylistが1つ、2秒単位のm4sが18個ありま
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 - iosdc2026HLSSample/server/data/streams/stream-20260818-225315-C7A2AB11
 -->
 
@@ -595,7 +594,7 @@ playlistはcommit APIが更新し、CloudFront経由のViewerは同じ相対URI�
 この時点ではmedia segmentがなくても、playlistの種類、target duration、initの場所は決まっています。
 
 [Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 - MomentNow-Lambda/src/commit.ts
 -->
 
@@ -692,7 +691,7 @@ HLSの全体像と冒頭で動かしたiosdc2026HLSSampleを、画面からHTTP 
 <!--
 画面は4領域です。
 カメラ、サーバー接続、出力情報、playlist本文を同時に出します。
-録画中にsegment数とpending uploadがどう変わるかを、実装を読む前に観察できます。
+録画中にsegment数とplaylist本文がどう変わるかを、実装を読む前に観察できます。
 
 公開サンプルは、S3の代わりにMacのHTTPサーバーへ同じ形のオブジェクトをPUTします。
 本番との差分は署名URL、Lambdaによるplaylist更新、CloudFrontです。iOSが作るinitとm4sは同じです。
@@ -752,7 +751,7 @@ segment生成とS3アップロードが続いている状態として扱い、st
     <b>writingQueue</b><span>sample順序・AVAssetWriter状態</span><i class="coral"></i>
   </div>
   <div class="concurrency-row">
-    <b>HLSUploadCoordinator actor</b><span>upload数・commit状態・終了状態</span><i class="green"></i>
+    <b>HLSStreamPublisher actor</b><span>公開順・retry・playlist状態</span><i class="green"></i>
   </div>
 </div>
 
@@ -773,37 +772,32 @@ CaptureSessionとWriterは別のserial queue、S3 uploadとcommitの状態はact
 
 <div class="kicker">START ORDER</div>
 
-# callbackを接続してから、Writerを開始する
+# streamを準備してから、Publisherへ渡す
 
-```swift {3-8|10-13}
-let channel = HLSUploadEventChannel()
+```swift {1|3-5|7-10}
+let fragments = try await recorder.startRecording()
 
-recorder.onInitSegment = { [channel] data in
-    channel.yield(.initialization(data))
-}
-recorder.onMediaSegment = { [channel, fragmentSeconds] seq, data, _ in
-    channel.yield(.media(seq: seq, data: data, durationSec: fragmentSeconds))
+let uploadTask = Task {
+    await publisher.publish(fragments)
 }
 
-uploadTask = Task {
-    await coordinator.consume(channel.stream, channel: channel)
-}
-try await recorder.startRecording()
+activeStream = ActiveStream(
+    publisher: publisher,
+    uploadTask: uploadTask
+)
 ```
 
 <!--
-startRecordingでは、先にcallbackとconsumerを接続し、最後にRecorderを開始します。
-順番を逆にすると、Writerがすぐ返したinit Dataを誰も受け取れない窓ができます。
+RecorderはAsyncThrowingStreamのcontinuationを保持してからWriterを有効にし、準備済みのstreamを返します。
+そのため、PublisherのTaskが動き出す前にinit Dataが届いてもstream内にbufferされます。
 
 Writer delegateは同期callbackです。
-そこでDataをAsyncStreamへ渡してすぐ戻り、HTTP処理はconsumer側でawaitします。メディア処理とネットワーク待ちの境界です。
-
-AsyncStream自体はqueue長を画面へ返しません。
-サンプルではyield時に加算し、consumerが1イベントを処理するたびに減算してpending uploadを表示します。
+そこでDataをAsyncThrowingStreamへ渡してすぐ戻り、HTTP処理はPublisher側でawaitします。メディア処理とネットワーク待ちの境界です。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 -->
 
 ---
@@ -1346,7 +1340,7 @@ m4sのseqは6桁にzero paddingし、playlistだけをUTF-8 textからDataへ変
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSManifest.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HTTPHLSClient.swift
 -->
 
@@ -1357,22 +1351,23 @@ m4sのseqは6桁にzero paddingし、playlistだけをUTF-8 textからDataへ変
 # stopは、3つの非同期処理を順番に閉じる
 
 <div class="drain-lanes">
-  <div><b>1 Recorder</b><span>finishWriting完了を待つ</span><small>最後のcallbackが出る</small></div>
+  <div><b>1 Recorder</b><span>capture停止 → finishWriting</span><small>最後のfragmentが出る</small></div>
   <i>→</i>
-  <div><b>2 Channel</b><span>continuation.finish()</span><small>新規eventを閉じる</small></div>
+  <div><b>2 Stream</b><span>continuation.finish()</span><small>fragment列を閉じる</small></div>
   <i>→</i>
-  <div class="hot"><b>3 Consumer</b><span>uploadTask.value</span><small>ENDLIST PUTまで待つ</small></div>
+  <div class="hot"><b>3 Publisher</b><span>uploadTask.value</span><small>ENDLIST PUTまで待つ</small></div>
 </div>
 
 <div class="bottom-claim">「撮影停止」と「配信終了」は、同じ瞬間ではない</div>
 
 <!--
 SampleHLSStreamer.stopRecordingの順序です。
-Writerを閉じて最後のsegmentを受け取り、channelをfinishし、consumerがENDLIST付きplaylistをPUTするまで待ちます。
+Recorder.stopがcapture、Writer、streamを順に閉じ、PublisherがENDLIST付きplaylistをPUTするまでTaskを待ちます。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 -->
 
 ---
@@ -1642,7 +1637,7 @@ while await streamer.hasPendingUploads() {
 録画停止は、ネットワーク送信完了と同義ではありません。
 現在の本番実装はUploaderへisLastを通知し、actor内のpending uploadがゼロになるまでcompletedへ進めません。
 ただし、onMediaSegmentで作ったTaskがactorに入る前はpending countへ反映されません。そのため、Taskが残っていてもpendingが0に見える余地があります。
-公開サンプルはAsyncStreamのconsumer Taskを保持し、channel.finish後にTaskの終了までawaitします。完了契約としてはこちらのほうが明確です。
+公開サンプルはAsyncThrowingStreamのconsumer Taskを保持し、Recorderがstreamを閉じた後にTaskの終了までawaitします。完了契約としてはこちらのほうが明確です。
 -->
 
 ---
@@ -1837,7 +1832,7 @@ class: chapter
 <div class="source-tree">
   <div class="source-row core"><b>HLSSegmentRecorder.swift</b><span>capture / encode / segment</span></div>
   <div class="source-row core"><b>SampleHLSStreamer.swift</b><span>recorderとuploadを接続</span></div>
-  <div class="source-row core"><b>HLSUploadCoordinator.swift</b><span>順序 / retry / finish</span></div>
+  <div class="source-row core"><b>HLSStreamPublisher.swift</b><span>順序 / retry / finish</span></div>
   <div class="source-row core"><b>HLSManifest.swift</b><span>playlist state</span></div>
   <div class="source-row core"><b>HTTPHLSClient.swift</b><span>PUT / health check</span></div>
   <div class="source-row"><b>SampleStreamViewModel.swift</b><span>permission / UI state</span></div>
@@ -2060,35 +2055,41 @@ Capture PTSの補正は、この指定と入力sampleを一致させるために
 
 ---
 
-<div class="kicker">DURATION CAVEAT</div>
+<div class="kicker">PUBLIC SAMPLE · SEGMENT DURATION</div>
 
-# 現在は2秒固定。実測時間は次の改善点
+# 実測durationを使い、取れなければ2秒
 
 <div class="duration-compare">
   <div class="duration-side sample">
-    <span>CURRENT</span>
-    <b>durationSec = 2.0</b>
-    <small>fragmentSecondsをcommit</small>
+    <span>REPORT</span>
+    <b>video track duration</b>
+    <small>EXTINFへ実際の長さ</small>
   </div>
   <div class="duration-side production">
-    <span>NEXT</span>
-    <b>segmentReportから実測</b>
-    <small>EXTINFへ正確な長さ</small>
+    <span>FALLBACK</span>
+    <b>config.segmentSeconds</b>
+    <small>無効・未取得なら2.0</small>
   </div>
 </div>
 
 ```swift
-recorder.onMediaSegment = { [uploader, fragmentSeconds] seq, data, _ in
-    try? await uploader.uploadSegment(
-        stream: stream, seq: seq, segmentData: data,
-        durationSec: fragmentSeconds
-    )
+let duration = report?.trackReports
+    .first { $0.mediaType == .video }?
+    .duration.seconds
+
+guard let duration, duration.isFinite, duration > 0 else {
+    return config.segmentSeconds
 }
+return duration
 ```
 
 <!--
-現在の本番実装もreportを受け取りますが、commitにはfragmentSecondsの2.0を渡しています。
-実segmentは必ずしもぴったり2秒ではないため、reportからdurationを取り出すのが次の精度改善です。
+公開サンプルはAVAssetSegmentReportのvideo track durationをplaylistへ渡します。
+reportがない、無効、0以下の場合だけ設定値の2秒へ戻します。frame reorderingは無効なので、このサンプルではvideo reportを採用しています。
+現在の本番実装はまだfragmentSecondsの2.0固定なので、同じ取り込み方を適用できる改善点です。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
 ---
@@ -2109,11 +2110,11 @@ recorder.onMediaSegment = { [uploader, fragmentSeconds] seq, data, _ in
 
 <!--
 サンプルは各PUTを最大3回試します。
-segment保存が3回とも失敗した場合、playlist PUTへ進まず、Coordinatorのerrorとして残します。
+segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publisherのerrorとして残します。
 
 [Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSUploadCoordinator.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSampleTests/HLSUploadCoordinatorTests.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSampleTests/HLSStreamPublisherTests.swift
 -->
 
 ---
@@ -2135,12 +2136,12 @@ monitorTask = Task {
 ```
 
 <div class="monitor-strip">
-  <span>elapsed</span><span>segmentCount</span><span>pendingUploadCount</span><span>playlistText</span><span>error</span>
+  <span>elapsed</span><span>segmentCount</span><span>playlistText</span><span>error</span>
 </div>
 
 <!--
 UIはdelegate callbackへ直接結びつけません。
-MainActorのViewModelが300msごとにsnapshotを取得し、elapsed、segment数、pending、playlist、errorをまとめて反映します。
+MainActorのViewModelが300msごとにsnapshotを取得し、elapsed、segment数、playlist、errorをまとめて反映します。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleStreamViewModel.swift
