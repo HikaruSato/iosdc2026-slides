@@ -470,7 +470,7 @@ class: demo-step
   </div>
 </div>
 
-<div class="bottom-claim">サーバーに残るのは、変換前の映像ではなく「再生可能なHLSオブジェクト」</div>
+<div class="bottom-claim">保存先で <code>ffplay playlist.m3u8</code> → HLS一式をそのまま再生確認</div>
 
 <!--
 停止時は、Writerを閉じて最後のsegmentを受け取ったあと、AsyncThrowingStreamをfinishします。
@@ -478,6 +478,7 @@ class: demo-step
 
 これはリポジトリに残っている実際の出力です。
 initが1つ、更新されるplaylistが1つ、2秒単位のm4sが18個あります。本番では同じ相対構造をS3 prefixへ置きます。
+保存先のstreamディレクトリでffplayにplaylist.m3u8を渡せば、m4s単体ではなくHLS一式として再生確認できます。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
