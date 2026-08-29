@@ -275,6 +275,92 @@ body,
   font-size: 18px;
 }
 
+/* Speaker intro */
+.speaker-intro {
+  overflow: hidden;
+  position: relative;
+}
+
+.speaker-intro-layout {
+  align-items: center;
+  display: grid;
+  gap: 82px;
+  grid-template-columns: 1fr 320px;
+  margin-top: 50px;
+}
+
+.speaker-intro-copy h1 {
+  font-size: 64px;
+  line-height: 1;
+  margin: 0;
+}
+
+.speaker-intro-handle {
+  color: var(--accent-primary);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 24px;
+  font-weight: 800;
+  margin-top: 15px;
+}
+
+.speaker-intro-app {
+  border-top: 2px solid var(--line);
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  margin-top: 42px;
+  padding-top: 22px;
+}
+
+.speaker-intro-app span {
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.speaker-intro-app b {
+  font-size: 29px;
+}
+
+.speaker-intro-app p {
+  color: var(--muted);
+  font-size: 21px;
+  grid-column: 2;
+  line-height: 1.55;
+  margin: 9px 0 0;
+}
+
+.speaker-intro-portrait {
+  height: 304px;
+  position: relative;
+  width: 304px;
+}
+
+.speaker-intro-portrait::before {
+  background: var(--accent-primary);
+  content: "";
+  inset: 18px -18px -18px 18px;
+  position: absolute;
+}
+
+.speaker-intro-portrait img {
+  border: 5px solid var(--ink);
+  display: block;
+  height: 304px;
+  object-fit: cover;
+  position: relative;
+  width: 304px;
+}
+
+.speaker-intro-claim {
+  border-top: 2px solid var(--ink);
+  font-size: 21px;
+  font-weight: 800;
+  margin-top: 44px;
+  padding-top: 13px;
+  text-align: center;
+}
+
 /* Statement and chapter */
 .statement {
   align-items: flex-start;

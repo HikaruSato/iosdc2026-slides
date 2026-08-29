@@ -42,6 +42,43 @@ exportFilename: iosdc2026-hls-on-iphone
 -->
 
 ---
+class: speaker-intro
+---
+
+<div class="kicker">ABOUT ME</div>
+
+<div class="speaker-intro-layout">
+  <div class="speaker-intro-copy">
+    <h1>Hikaru Sato</h1>
+    <div class="speaker-intro-handle">@SatoHikaruDev</div>
+    <div>
+      主に iOS / Android / Ruby on Rails のアプリ開発をやっています
+    </div>
+    <div class="speaker-intro-app">
+      <p>MomentNow という「今この瞬間」の動画をHLSで配信し、<br>URLで共有できる iOSアプリ を個人開発してます</p>
+    </div>
+  </div>
+
+  <div class="speaker-intro-portrait">
+    <img src="/assets/speaker-hikaru.jpg" alt="SatoHikaruDev profile image" />
+  </div>
+</div>
+
+<div class="speaker-intro-claim">今回は MomentNow での端末内HLS生成の仕組みや実装を分解します</div>
+
+<!--
+[Timing checkpoint: 00:20]
+
+佐藤光、@SatoHikaruDevです。
+今この瞬間の動画をHLSで配信し、共有URLから見られるiOSアプリ「MomentNow」を個人開発しています。
+今日は、このアプリで必要になった端末内のHLS生成と公開順の実装を、公開サンプルと一緒に分解します。
+
+[Sources]
+- fortee: iOSDC Japan 2026 speaker profile image
+- MomentNow-iOS/README.md
+-->
+
+---
 layout: center
 class: chapter
 ---
@@ -163,7 +200,7 @@ initだけにも、m4sだけにも、完全な再生体験はありません。p
   <div class="event-connector"></div>
   <div class="event-phase ended">
     <span class="time">stop</span>
-    <b>ENDLIST</b>
+    <b>#EXT-X-ENDLIST</b>
     <small>もう増えない</small>
   </div>
 </div>
@@ -174,7 +211,7 @@ initだけにも、m4sだけにも、完全な再生体験はありません。p
 
 <!--
 配信側は短いsegmentを作り、そのURIをplaylistの末尾へ追加します。
-Playerはplaylistを再取得し、新しく見つけたsegmentを順に取得します。この繰り返しがHLSのライブ配信です。停止時はENDLISTで閉じます。
+Playerはplaylistを再取得し、新しく見つけたsegmentを順に取得します。この繰り返しがHLSのライブ配信です。停止時は#EXT-X-ENDLISTで閉じます。
 
 [Sources]
 - RFC 8216 §4.3.3: Media Playlist Tags
@@ -435,7 +472,7 @@ class: demo-step viewer-demo-step
   <i>→</i>
   <div><b>最新を選択</b><code>playlistURL</code></div>
   <i>→</i>
-  <div class="viewer-live"><b>LIVE</b><span>Safari / hls.js</span></div>
+  <div class="viewer-live"><b>LIVE</b><span>Safari / AVPlayer / hls.js</span></div>
 </div>
 
 <div class="demo-observe-line">
@@ -447,9 +484,11 @@ class: demo-step viewer-demo-step
 <!--
 MacのViewerは1秒ごとにstream一覧を取得し、更新時刻が最も新しい配信を選びます。
 SafariはネイティブHLS、それ以外は同梱したhls.jsで再生します。
+同じplaylist URLをiOSのAVPlayerへ渡し、WebとiOSの両方で再生を確認します。
 
 [Sources]
 - iosdc2026HLSSample/server/static/app.js
+- Apple: Using AVFoundation to play and persist HTTP live streams
 -->
 
 ---
@@ -582,11 +621,13 @@ iPhoneが完成済みのHLS断片をPUTし、Playerは同じオブジェクト�
   <div><b>Viewer reload</b><span>次のsegmentを取得</span></div>
 </div>
 
-<div class="bottom-claim">「保存できた」と「再生リストに載せた」を分ける</div>
+<div class="bottom-claim">保存と公開を分ける · playlistはno-cache、init / m4sはlong-cache</div>
 
 <!--
 control planeはplaylist更新です。
 segment objectが存在することを確認してから、playlistへURIを追加します。これが、途中の404を防ぐ公開契約です。
+
+同じURLを更新するplaylistはno-store / no-cacheにし、一度置いたら変えないinit.mp4とm4sは長期cacheします。
 
 本番ではstreamIdごとのprefixへinitとm4sを置きます。
 playlistはcommit APIが更新し、CloudFront経由のViewerは同じ相対URIをたどります。
@@ -596,7 +637,9 @@ playlistはcommit APIが更新し、CloudFront経由のViewerは同じ相対URI�
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+- iosdc2026HLSSample/server/server.py
 - MomentNow-Lambda/src/commit.ts
+- MomentNow-Lambda/src/create_stream.ts
 -->
 
 ---
@@ -903,13 +946,18 @@ videoOutput.videoSettings = [
 ]
 ```
 
-<div class="bottom-claim">ここはHLS固有ではなく、通常のcapture → encode処理</div>
+<div class="bottom-claim compact">サンプルは1.5 Mbps · 本番は上り回線に合わせて0.9-2.5 Mbps</div>
 
 <div class="source">HLSSegmentRecorder.setupCaptureSessionLocked()</div>
 
 <!--
 DataOutputからはNV12のpixel bufferを受け取ります。
 この段階は未圧縮で、H.264への圧縮はAVAssetWriterInputのoutputSettingsが担当します。
+公開サンプルは説明しやすい1.5 Mbps固定です。本番は上り回線を優先し、品質設定ごとに0.9、1.6、2.5 Mbpsから選びます。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- LiveSegmentRecorder.makeHLSVideoSettings()
 -->
 
 ---
@@ -1546,11 +1594,15 @@ iOSアプリはS3のcredentialを持ちません。
   </div>
 </div>
 
-<div class="bottom-claim">存在するsegmentだけを、再生可能として公開する</div>
+<div class="bottom-claim">サンプルは最大3回retry · 失敗したsegmentはplaylistへ載せない</div>
 
 <!--
 順序が重要です。
 PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで見つけたURIをGETして404になります。
+公開サンプルは同じobjectを最大3回まで再送し、それでも失敗した場合はplaylist更新へ進まずerrorとして残します。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 -->
 
 ---
