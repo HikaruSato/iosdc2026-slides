@@ -572,6 +572,14 @@ body,
   gap: 18px;
 }
 
+.demo-repository {
+  color: var(--muted);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 18px;
+  margin-top: 10px;
+  text-align: right;
+}
+
 .live-upload-strip {
   display: grid;
   gap: 8px;
@@ -764,7 +772,7 @@ body,
   border-bottom: 2px solid var(--accent-primary);
   display: grid;
   gap: 14px;
-  grid-template-columns: 120px 1.25fr 35px 1.25fr 35px 1.25fr 35px 1.1fr;
+  grid-template-columns: 100px 1.2fr 150px 1.35fr 30px 1fr 30px 0.9fr;
   padding: 0 0 18px;
 }
 
@@ -819,6 +827,223 @@ body,
   color: var(--muted);
   font-size: 25px;
   text-align: center;
+}
+
+.arch-arrow.labeled {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.arch-arrow.labeled small {
+  color: var(--muted);
+  display: block;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 15px;
+  margin-top: 4px;
+}
+
+.chapter-overview {
+  align-items: stretch;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 20px 1fr 20px 1fr 20px 1fr 20px 1fr 20px 1fr;
+  margin-top: 54px;
+}
+
+.chapter-overview > div {
+  border-top: 6px solid var(--accent-primary);
+  min-height: 150px;
+  padding: 16px 5px 0;
+  text-align: center;
+}
+
+.chapter-overview b,
+.chapter-overview span {
+  display: block;
+}
+
+.chapter-overview b {
+  color: var(--accent-primary);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 24px;
+}
+
+.chapter-overview span {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.45;
+  margin-top: 12px;
+}
+
+.chapter-overview > i {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 22px;
+  font-style: normal;
+  justify-content: center;
+}
+
+.capture-branches {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: 220px 70px 1fr;
+  margin-top: 36px;
+}
+
+.capture-branch-source {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 6px;
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 210px;
+  padding: 20px;
+  text-align: center;
+}
+
+.capture-branch-source span {
+  color: var(--on-dark-muted);
+  font-size: 19px;
+}
+
+.capture-branch-source b {
+  font-size: 24px;
+  margin-top: 10px;
+}
+
+.capture-branch-lines {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  padding: 34px 0;
+}
+
+.capture-branch-lines i {
+  border-top: 3px solid var(--accent-primary);
+  align-self: center;
+}
+
+.capture-branch-targets {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.capture-branch-targets > div {
+  border-top: 6px solid var(--accent-secondary);
+  padding: 18px 12px 0;
+}
+
+.capture-branch-targets > div.hls {
+  border-color: var(--accent-primary);
+}
+
+.capture-branch-targets > div.local {
+  border-color: var(--success);
+}
+
+.capture-branch-targets span,
+.capture-branch-targets b,
+.capture-branch-targets small {
+  display: block;
+}
+
+.capture-branch-targets span {
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.capture-branch-targets b {
+  font-size: 21px;
+  margin-top: 10px;
+}
+
+.capture-branch-targets small {
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.4;
+  margin-top: 10px;
+}
+
+.local-recording-result {
+  align-items: center;
+  background: var(--success-soft);
+  border-radius: 6px;
+  color: var(--success);
+  display: flex;
+  font-size: 19px;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 13px 18px;
+}
+
+.local-recording-result span {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-weight: 800;
+}
+
+.local-recording-result i {
+  font-style: normal;
+}
+
+.implementation-story {
+  align-items: stretch;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr 32px 1fr 32px 1fr;
+  margin-top: 60px;
+}
+
+.implementation-story > div {
+  border-top: 7px solid var(--line);
+  min-height: 180px;
+  padding: 20px 15px 0;
+  text-align: center;
+}
+
+.implementation-story > div.reference {
+  border-color: var(--accent-primary);
+}
+
+.implementation-story > div.adapt {
+  border-color: var(--success);
+}
+
+.implementation-story span,
+.implementation-story b,
+.implementation-story small {
+  display: block;
+}
+
+.implementation-story span {
+  color: var(--muted);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 18px;
+}
+
+.implementation-story b {
+  font-size: 24px;
+  margin-top: 12px;
+}
+
+.implementation-story small {
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1.45;
+  margin-top: 12px;
+}
+
+.implementation-story > i {
+  align-items: center;
+  color: var(--accent-primary);
+  display: flex;
+  font-size: 28px;
+  font-style: normal;
+  justify-content: center;
 }
 
 .route {
@@ -4705,7 +4930,7 @@ body,
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 15px;
-  grid-template-columns: 120px 1fr 140px 1.2fr 120px 1fr;
+  grid-template-columns: 150px 1fr 140px 1.2fr 120px 1fr;
   min-height: 115px;
 }
 
