@@ -253,8 +253,8 @@ API、保存、配信、状態管理は残ります。なくすのは、映像�
 <div class="kicker">WHY</div>
 <div class="story-split">
   <div>
-    <h1>撮影後に待つほど、<br>共有したい瞬間から遠ざかる</h1>
-    <p class="lead">子どもの動画を家族へ送る。<br>撮影中から届けば、撮影後に待たせずに済む。</p>
+    <h1>1ファイルだと<br>アップロードに時間がかかって共有したい瞬間から遠ざかる</h1>
+    <p class="lead">撮影中からアップロードできていれば共有も楽</p>
   </div>
   <div class="why-files">
     <div class="why-file large"><span>撮影終了後</span><b>recording.mov</b><small>大きな1ファイルを送信</small></div>
@@ -303,11 +303,11 @@ class: statement
 
 <div class="kicker">LIVE DEMO · PUBLIC SAMPLE</div>
 
-# 仕組みが見えたところで、最小構成を動かす
+# 仕組みが見えたところで、最小構成を動かす(Sample Code)
 
 <div class="live-demo-grid">
   <div class="live-demo-phone">
-    <span>iosdc2026HLSSample</span>
+    <span>HLSSample</span>
     <div class="live-demo-camera">Camera Preview</div>
     <b><i></i> 配信中</b>
   </div>
@@ -344,7 +344,7 @@ class: demo-step
 
 <div class="kicker">DEMO · 1 / 5</div>
 
-# Macは「PUTされたファイルを残すだけ」
+# Server は「PUTされたファイルを残すだけ」
 
 <div class="demo-command-layout">
   <div class="terminal-card">
@@ -656,7 +656,6 @@ playlistはcommit APIが更新し、CloudFront経由のViewerは同じ相対URI�
   <div class="fmp4-playable"><span>playlistが結ぶ</span><b>再生可能</b><small>Playerはこの組み合わせを取得</small></div>
 </div>
 
-<div class="bottom-claim">ftyp / moov / moof / mdatというbox名はAppendixで扱う</div>
 
 <div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter</div>
 
@@ -723,7 +722,7 @@ HLSの全体像と冒頭で動かしたiosdc2026HLSSampleを、画面からHTTP 
 
 <div class="kicker">FOUR OWNERS</div>
 
-# 本番は4つの型で、生成と公開を分ける
+# 4つの型で生成と公開を分ける
 
 <div class="owner-lanes">
   <div><span>UI</span><b>LiveStreamViewModel</b><small>ready / streaming / completed</small></div>
@@ -1441,7 +1440,7 @@ AVAssetWriterDelegateのDataを、HLSUploadCoordinatorがS3へ公開する流れ
 
 <div class="kicker">THREE REQUESTS · THIS PRODUCTION DESIGN</div>
 
-# 本番は、presign → PUT → commitに分担
+# 実アプリでは、presign → PUT → commitに分担
 
 <div class="settings-table">
   <div class="settings-head"><span>REQUEST</span><span>DESTINATION</span><span>ROLE</span></div>
