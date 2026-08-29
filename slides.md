@@ -2057,7 +2057,7 @@ Capture PTSの補正は、この指定と入力sampleを一致させるために
 
 <div class="kicker">VIDEO SETTINGS</div>
 
-# 配信用videoは、互換性と上り帯域を優先する
+# 配信用videoフォーマットは、互換性と上り帯域を優先する
 
 <div class="settings-table">
   <div class="settings-head"><span>KEY</span><span>VALUE</span><span>INTENT</span></div>
@@ -2112,7 +2112,7 @@ Capture PTSの補正は、この指定と入力sampleを一致させるために
   <div class="duration-side sample">
     <span>REPORT</span>
     <b>video track duration</b>
-    <small>EXTINFへ実際の長さ</small>
+    <small>EXTINFへ実際の長さ。とくに最後のsegmentは2秒にならないので必要</small>
   </div>
   <div class="duration-side production">
     <span>FALLBACK</span>
@@ -2168,36 +2168,6 @@ segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publis
 
 ---
 
-<div class="kicker">UI OBSERVATION LOOP</div>
-
-# ViewModelは300msごとに、配信状態を更新
-
-```swift {2-10}
-monitorTask = Task {
-    while !Task.isCancelled {
-        elapsedSeconds = streamer.recordedSeconds
-        if let snapshot = await streamer.currentSnapshot() {
-            apply(snapshot)
-        }
-        try? await Task.sleep(for: .milliseconds(300))
-    }
-}
-```
-
-<div class="monitor-strip">
-  <span>elapsed</span><span>segmentCount</span><span>playlistText</span><span>error</span>
-</div>
-
-<!--
-UIはdelegate callbackへ直接結びつけません。
-MainActorのViewModelが300msごとにsnapshotを取得し、elapsed、segment数、playlist、errorをまとめて反映します。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleStreamViewModel.swift
--->
-
----
-
 <div class="kicker">SERVER · ATOMIC REPLACE</div>
 
 # PUT中のファイルを、Viewerへ見せない
@@ -2230,10 +2200,9 @@ Macサーバーはrequest bodyをdestinationへ直接書きません。
   <div class="cache-head"><span>OBJECT</span><span>CACHE</span><span>HTTP</span></div>
   <div class="dynamic"><b>playlist.m3u8</b><span>no-store / no-cache</span><code>毎回最新を取得</code></div>
   <div class="immutable"><b>init.mp4 / m4s</b><span>max-age=31536000</span><code>Range / 206対応</code></div>
-  <div class="immutable"><b>static assets</b><span>max-age=86400</span><code>Viewer UI</code></div>
 </div>
 
-<div class="bottom-claim compact">この区別は、S3 + CloudFrontでもそのまま使う</div>
+<div class="bottom-claim compact">S3 / CloudFrontでの設定</div>
 
 <!--
 playlistは同じURLの内容が増えるためキャッシュさせません。
@@ -2243,25 +2212,4 @@ initとm4sは一度置いたら変えず長期cacheし、PlayerのRange request�
 - iosdc2026HLSSample/server/server.py
 - MomentNow-Lambda/src/create_stream.ts
 - MomentNow-Lambda/src/presign.ts
--->
-
----
-
-<div class="kicker">OBSERVE THE UPLINK</div>
-
-# iPhone側で、upload backlogと速度を測る
-
-<div class="cache-table">
-  <div class="cache-head"><span>METRIC</span><span>MEANING</span><span>USE</span></div>
-  <div class="dynamic"><b>pendingSegmentCount</b><span>未完了upload数</span><code>stop待機 / backlog</code></div>
-  <div class="dynamic"><b>averageRoundTripSec</b><span>presign + PUT</span><code>segment間隔と比較</code></div>
-  <div class="immutable"><b>averageUploadDurationSec</b><span>PUT所要時間</span><code>回線劣化を検知</code></div>
-  <div class="immutable"><b>averageUploadThroughputBps</b><span>送信bitrate</span><code>品質選択の根拠</code></div>
-</div>
-
-<div class="bottom-claim">平均は smoothingFactor = 0.25 の指数移動平均</div>
-
-<!--
-Coordinatorは各PUTのbytes、upload時間、presignからのround tripを記録しています。
-segment生成よりuploadが遅い状態を、pending countとthroughputで端末側から観測できます。
 -->
