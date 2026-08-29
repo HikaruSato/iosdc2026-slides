@@ -20,8 +20,8 @@ exportFilename: iosdc2026-hls-on-iphone
     <div class="event-line">iOSDC Japan 2026 · Regular Talk · 40 min</div>
     <h1>
       <span class="cover-line">映像変換サーバーなしで</span>
-      <span class="cover-line"><span class="accent-coral">iPhone端末内で</span></span>
-      <span class="cover-line"><span class="accent-coral">HLS</span>を生成してライブ配信</span>
+      <span class="cover-line"><span class="accent-primary">iPhone端末内で</span></span>
+      <span class="cover-line"><span class="accent-primary">HLS</span>を生成してライブ配信</span>
     </h1>
     <div class="speaker">Hikaru Sato <span>@SatoHikaruDev</span></div>
   </div>
@@ -66,7 +66,7 @@ HLSでは、長い動画を短い断片へ分け、その再生順を示すplayl
 
 <div class="kicker">HLS LIVE IN ONE SENTENCE</div>
 
-# HLSは、短い動画と<br><span class="accent-coral">更新されるplaylist</span>をHTTPで配る
+# HLSは、短い動画と<br><span class="accent-primary">更新されるplaylist</span>をHTTPで配る
 
 <div class="playlist-model">
   <div class="manifest-card">
@@ -245,7 +245,7 @@ class: statement
 
 <div class="kicker">THIS TALK'S IMPLEMENTATION</div>
 
-# iPhoneが生成したHLSを<br><span class="accent-coral">撮影中からS3へ公開する</span>
+# iPhoneが生成したHLSを<br><span class="accent-primary">撮影中からS3へ公開する</span>
 
 <div class="result-flow end-to-end">
   <div class="result-step"><b>映像と音声を受け取る</b><span>Camera + Mic</span></div>
@@ -1732,7 +1732,7 @@ class: statement ink-statement
 
 <div class="kicker">BACK TO THE DEMO</div>
 
-# 冒頭のデモで増えていたのは<br><span class="accent-coral">「ファイル」と「再生可能な順序」</span>
+# 冒頭のデモで増えていたのは<br><span class="accent-primary">「ファイル」と「再生可能な順序」</span>
 
 <div class="demo-recap">
   <span>init.mp4</span><i>＋</i><span>000001.m4s</span><i>＋</i><span>playlist更新</span><i>＝</i><b>LIVE</b>
