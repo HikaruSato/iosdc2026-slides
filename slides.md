@@ -516,7 +516,7 @@ class: demo-step
 すべてのイベントを処理した最後にENDLIST付きplaylistをPUTします。
 
 これはリポジトリに残っている実際の出力です。
-initが1つ、更新されるplaylistが1つ、2秒単位のm4sが18個あります。本番では同じ相対構造をS3 prefixへ置きます。
+initが1つ、更新されるplaylistが1つ、2秒単位のm4sが18個あります。個人アプリでは同じ相対構造をS3 prefixへ置きます。
 保存先のstreamディレクトリでffplayにplaylist.m3u8を渡せば、m4s単体ではなくHLS一式として再生確認できます。
 
 [Sources]
@@ -571,7 +571,7 @@ Capture、fMP4化、オブジェクト公開、playlist追従再生。境界を�
 <div class="repo-line">Public at iOSDC 2026 / iosdc2026HLSSample</div>
 
 <!--
-HLSの最小形を確認し、Capture、Writer、S3 uploadの順に本番の処理を追います。
+HLSの最小形を確認し、Capture、Writer、S3 uploadの順に個人アプリの処理を追います。
 iosdc2026HLSSampleは、iOSDCのタイミングでpublic repositoryとして公開します。
 発表では、iOSの生成処理を拡大して読むために使います。
 
@@ -583,7 +583,7 @@ iPhoneが完成済みのHLS断片をPUTし、Playerは同じオブジェクト�
 
 <div class="kicker">SAME SHAPE, DIFFERENT DESTINATION</div>
 
-# サンプルと本番は、同じHLSを別の場所へ置く
+# サンプルと個人アプリは、同じHLSを別の場所へ置く
 
 <div class="environment-map">
   <div class="environment-row sample">
@@ -597,8 +597,8 @@ iPhoneが完成済みのHLS断片をPUTし、Playerは同じオブジェクト�
 <div class="bottom-claim">init.mp4とm4sのバイト列は、どちらもiPhoneが生成する</div>
 
 <!--
-公開サンプルと本番の対応です。
-サンプルはMacのfilesystemとViewer、本番はS3とCloudFrontです。端末が生成するHLSの構造は変わりません。
+公開サンプルと個人アプリの対応です。
+サンプルはMacのfilesystemとViewer、個人アプリはS3とCloudFrontです。端末が生成するHLSの構造は変わりません。
 
 [Sources]
 - iosdc2026HLSSample/README.md
@@ -629,10 +629,10 @@ segment objectが存在することを確認してから、playlistへURIを追�
 
 同じURLを更新するplaylistはno-store / no-cacheにし、一度置いたら変えないinit.mp4とm4sは長期cacheします。
 
-本番ではstreamIdごとのprefixへinitとm4sを置きます。
+個人アプリではstreamIdごとのprefixへinitとm4sを置きます。
 playlistはcommit APIが更新し、CloudFront経由のViewerは同じ相対URIをたどります。
 
-本番のcommit APIが生成する初期playlistです。
+個人アプリのcommit APIが生成する初期playlistです。
 この時点ではmedia segmentがなくても、playlistの種類、target duration、initの場所は決まっています。
 
 [Sources]
@@ -715,7 +715,7 @@ class: chapter
 [Timing checkpoint: 13:30]
 
 HLSの全体像と冒頭で動かしたiosdc2026HLSSampleを、画面からHTTP PUTまで順に分解します。
-本番固有の認証やAWS構成を外し、HLS生成と公開順序を追える形にしています。
+個人アプリ固有の認証やAWS構成を外し、HLS生成と公開順序を追える形にしています。
 -->
 
 ---
@@ -737,7 +737,7 @@ HLSの全体像と冒頭で動かしたiosdc2026HLSSampleを、画面からHTTP 
 録画中にsegment数とplaylist本文がどう変わるかを、実装を読む前に観察できます。
 
 公開サンプルは、S3の代わりにMacのHTTPサーバーへ同じ形のオブジェクトをPUTします。
-本番との差分は署名URL、Lambdaによるplaylist更新、CloudFrontです。iOSが作るinitとm4sは同じです。
+個人アプリとの差分は署名URL、Lambdaによるplaylist更新、CloudFrontです。iOSが作るinitとm4sは同じです。
 
 UI状態、メディア状態、アップロード状態を分けています。
 HLS固有の時刻処理もS3の公開順も、ViewModelへ漏らしません。
@@ -889,7 +889,7 @@ class: chapter
 権限の遷移をRecorderへ混ぜないことで、Recorderは許可済みの前提に集中できます。
 
 PreviewはCaptureSession、RecordingはAVAssetWriterのライフサイクルです。
-本番ではpreview準備とstreaming開始を分け、録画ボタンを押した時点でWriterとUploaderを動かします。
+個人アプリではpreview準備とstreaming開始を分け、録画ボタンを押した時点でWriterとUploaderを動かします。
 
 CaptureSessionには背面カメラとマイクを追加し、出力はDataOutputにします。
 完成した動画ファイルではなく、フレームごとのCMSampleBufferを受け取るためです。
@@ -945,14 +945,14 @@ videoOutput.videoSettings = [
 ]
 ```
 
-<div class="bottom-claim compact">サンプルは1.5 Mbps · 本番は上り回線に合わせて0.9-2.5 Mbps</div>
+<div class="bottom-claim compact">サンプルは1.5 Mbps · 個人アプリは上り回線に合わせて0.9-2.5 Mbps</div>
 
 <div class="source">HLSSegmentRecorder.setupCaptureSessionLocked()</div>
 
 <!--
 DataOutputからはNV12のpixel bufferを受け取ります。
 この段階は未圧縮で、H.264への圧縮はAVAssetWriterInputのoutputSettingsが担当します。
-公開サンプルは説明しやすい1.5 Mbps固定です。本番は上り回線を優先し、品質設定ごとに0.9、1.6、2.5 Mbpsから選びます。
+公開サンプルは説明しやすい1.5 Mbps固定です。個人アプリは上り回線を優先し、品質設定ごとに0.9、1.6、2.5 Mbpsから選びます。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
@@ -979,7 +979,7 @@ guard CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
 <!--
 リアルタイム入力では、遅延したframeを無制限に保持するとメモリと遅延が増えます。
-本番もlate frameを捨て、現在へ追いつく判断です。
+個人アプリもlate frameを捨て、現在へ追いつく判断です。
 
 CaptureSessionが動いていても、Writerへ渡すのは録画中だけです。
 sample dataがreadyでない場合も早期returnし、Writerの状態遷移を単純に保ちます。
@@ -1432,7 +1432,7 @@ class: chapter
 <!--
 [Timing checkpoint: 29:30]
 
-ここから本番のiOS実装です。
+ここから個人アプリのiOS実装です。
 AVAssetWriterDelegateのDataを、HLSUploadCoordinatorがS3へ公開する流れを追います。
 -->
 
@@ -1440,7 +1440,7 @@ AVAssetWriterDelegateのDataを、HLSUploadCoordinatorがS3へ公開する流れ
 
 <div class="kicker">THREE REQUESTS · THIS PRODUCTION DESIGN</div>
 
-# 実アプリでは、presign → PUT → commitに分担
+# 個人アプリでは、presign → PUT → commitに分担
 
 <div class="settings-table">
   <div class="settings-head"><span>REQUEST</span><span>DESTINATION</span><span>ROLE</span></div>
@@ -1687,7 +1687,7 @@ while await streamer.hasPendingUploads() {
 
 <!--
 録画停止は、ネットワーク送信完了と同義ではありません。
-現在の本番実装はUploaderへisLastを通知し、actor内のpending uploadがゼロになるまでcompletedへ進めません。
+現在の個人アプリ実装はUploaderへisLastを通知し、actor内のpending uploadがゼロになるまでcompletedへ進めません。
 ただし、onMediaSegmentで作ったTaskがactorに入る前はpending countへ反映されません。そのため、Taskが残っていてもpendingが0に見える余地があります。
 公開サンプルはAsyncThrowingStreamのconsumer Taskを保持し、Recorderがstreamを閉じた後にTaskの終了までawaitします。完了契約としてはこちらのほうが明確です。
 -->
@@ -1750,7 +1750,7 @@ callback内ではTaskを作るだけにし、ネットワークawaitはSwift Con
 
 <div class="kicker">SAMPLE → PRODUCTION</div>
 
-# 本番では、HLSの外側に4つの制御を足す
+# 個人アプリでは、HLSの外側に4つの制御を足す
 
 <div class="production-additions">
   <div><b>AUTH</b><span>user / group ownership</span></div>
@@ -1763,9 +1763,9 @@ callback内ではTaskを作るだけにし、ネットワークawaitはSwift Con
 
 <!--
 iosdc2026HLSSampleはMacを小さなobject serverとして使います。
-本番は先にpresignしてS3へPUTし、Lambdaのcommitでplaylistを更新します。生成するDataと保存順序は共通です。
+個人アプリは先にpresignしてS3へPUTし、Lambdaのcommitでplaylistを更新します。生成するDataと保存順序は共通です。
 
-サンプルから本番へ足すものです。
+サンプルから個人アプリへ足すものです。
 認証、署名URL、playlist競合制御、CDN配信。どれも重要ですが、映像の再エンコードではありません。
 
 [Sources]
@@ -1925,7 +1925,7 @@ case .low:    (.init(width: 480, height: 854),    900_000)
 <div class="source">LiveSegmentRecorder.Config.resolved / AutoStreamingQualityResolver</div>
 
 <!--
-本番ではNWPathと小さなprobe PUTから、high、medium、lowの1品質を配信開始前に選びます。
+個人アプリではNWPathと小さなprobe PUTから、high、medium、lowの1品質を配信開始前に選びます。
 途中でrenditionを切り替えるABRではなく、端末の上り回線に合わせた開始時の選択です。
 -->
 
@@ -2052,7 +2052,7 @@ writer.initialSegmentStartTime = startTimeOffset
 ```
 
 <!--
-本番のHLS Writerも初期segmentの開始を10秒へ設定します。
+個人アプリのHLS Writerも初期segmentの開始を10秒へ設定します。
 Capture PTSの補正は、この指定と入力sampleを一致させるために必要でした。
 -->
 
@@ -2074,7 +2074,7 @@ Capture PTSの補正は、この指定と入力sampleを一致させるために
 <div class="source">LiveSegmentRecorder.makeHLSVideoSettings()</div>
 
 <!--
-本番はH.264 portraitで、品質に応じて480pまたは720p、0.9から2.5Mbpsを選びます。
+個人アプリはH.264 portraitで、品質に応じて480pまたは720p、0.9から2.5Mbpsを選びます。
 端末保存品質ではなく、ネットワークへ継続的に送れる配信品質として設定します。
 -->
 
@@ -2138,7 +2138,7 @@ return duration
 <!--
 公開サンプルはAVAssetSegmentReportのvideo track durationをplaylistへ渡します。
 reportがない、無効、0以下の場合だけ設定値の2秒へ戻します。frame reorderingは無効なので、このサンプルではvideo reportを採用しています。
-現在の本番実装はまだfragmentSecondsの2.0固定なので、同じ取り込み方を適用できる改善点です。
+現在の個人アプリ実装はまだfragmentSecondsの2.0固定なので、同じ取り込み方を適用できる改善点です。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
@@ -2240,7 +2240,7 @@ Macサーバーはrequest bodyをdestinationへ直接書きません。
 
 <!--
 playlistは同じURLの内容が増えるためキャッシュさせません。
-initとm4sは一度置いたら変えず長期cacheし、PlayerのRange requestには206で返します。本番もobjectの可変性で方針を分けます。
+initとm4sは一度置いたら変えず長期cacheし、PlayerのRange requestには206で返します。個人アプリもobjectの可変性で方針を分けます。
 
 [Sources]
 - iosdc2026HLSSample/server/server.py
