@@ -470,7 +470,7 @@ body,
 }
 
 .result-flow.end-to-end .result-step span {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .result-step {
@@ -491,7 +491,7 @@ body,
   color: var(--muted);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -520,7 +520,7 @@ body,
 
 .live-demo-phone > span {
   display: block;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   margin-bottom: 14px;
 }
@@ -531,7 +531,7 @@ body,
   color: var(--muted);
   display: flex;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   height: 210px;
   justify-content: center;
 }
@@ -539,7 +539,7 @@ body,
 .live-demo-phone b {
   color: var(--accent-primary);
   display: block;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   margin-top: 16px;
   text-align: center;
@@ -564,7 +564,7 @@ body,
   color: var(--muted);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .live-demo-result {
@@ -591,12 +591,12 @@ body,
 .live-upload-strip span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .live-upload-strip b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   margin-top: 6px;
 }
@@ -612,7 +612,7 @@ body,
 .live-demo-viewer > span {
   color: var(--on-dark-muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .live-demo-viewer b {
@@ -631,7 +631,7 @@ body,
 .live-demo-viewer small {
   color: var(--on-dark-muted);
   display: block;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 12px;
 }
 
@@ -664,7 +664,7 @@ body,
 .why-file span,
 .why-segments span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -681,7 +681,7 @@ body,
 .why-file small,
 .why-segments small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -699,7 +699,7 @@ body,
 .why-segments b {
   background: var(--success-soft);
   display: inline-block;
-  font-size: 18px;
+  font-size: 22px;
   margin: 12px 6px 0 0;
   padding: 9px 10px;
 }
@@ -731,7 +731,7 @@ body,
   color: var(--accent-primary);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -744,7 +744,7 @@ body,
 .constraint-item small {
   color: var(--muted);
   display: block;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -775,7 +775,7 @@ body,
 
 .arch-label {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -793,7 +793,7 @@ body,
   color: var(--muted);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 500;
   margin-top: 6px;
 }
@@ -843,7 +843,7 @@ body,
   color: var(--muted);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .route span {
@@ -861,7 +861,7 @@ body,
 .repo-line {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 48px;
   text-align: right;
 }
@@ -886,7 +886,7 @@ body,
 
 .manifest-card code {
   color: var(--on-dark-muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .manifest-card code.hot {
@@ -949,7 +949,7 @@ body,
   color: var(--accent-secondary);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -967,7 +967,7 @@ body,
 .file-type small {
   color: var(--muted);
   display: block;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -1022,7 +1022,7 @@ body,
 
 .tree-branch small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .manifest-annotated {
@@ -1054,7 +1054,7 @@ body,
 
 .annotation-list code {
   color: var(--accent-secondary);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -1087,7 +1087,7 @@ body,
   color: var(--muted);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .event-phase b {
@@ -1099,7 +1099,7 @@ body,
 .event-phase small {
   color: var(--muted);
   display: block;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 5px;
 }
 
@@ -1144,14 +1144,14 @@ body,
 }
 
 .iso-box span {
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
 .box-group small {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   grid-column: 1 / 3;
   text-align: center;
 }
@@ -1181,7 +1181,7 @@ body,
 
 .ownership-side > span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -1237,7 +1237,7 @@ body,
 .ui-preview span {
   color: var(--on-dark-muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .ui-preview b {
@@ -1254,7 +1254,7 @@ body,
 
 .ui-controls span {
   border-bottom: 3px solid var(--accent-primary);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   padding-bottom: 7px;
 }
@@ -1277,12 +1277,12 @@ body,
 
 .ui-output b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .ui-output span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -1299,7 +1299,7 @@ body,
 .ui-playlist span {
   color: var(--muted);
   display: block;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 12px;
 }
 
@@ -1365,12 +1365,12 @@ body,
 
 .source-row b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .source-row span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .owner-lanes {
@@ -1395,7 +1395,7 @@ body,
 .owner-lanes span {
   color: var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -1406,7 +1406,7 @@ body,
 
 .owner-lanes small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .call-chain {
@@ -1433,13 +1433,13 @@ body,
 
 .call-chain span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
 .call-chain code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
   margin-top: 9px;
 }
@@ -1462,7 +1462,7 @@ body,
 .call-return span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .call-return i {
@@ -1505,21 +1505,21 @@ body,
 
 .state-node small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
 .state-arrow {
   border-bottom: 2px solid var(--line);
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   padding-bottom: 6px;
   text-align: center;
 }
 
 .error-branch {
   color: var(--danger);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 42px;
   text-align: center;
 }
@@ -1588,7 +1588,7 @@ body,
 .config-rail span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 5px;
 }
 
@@ -1627,7 +1627,7 @@ body,
 .permission-node span,
 .permission-result span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 6px;
 }
 
@@ -1663,7 +1663,7 @@ body,
 
 .phase-block span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -1675,14 +1675,14 @@ body,
 
 .phase-block small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 9px;
 }
 
 .phase-gap {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   text-align: center;
 }
 
@@ -1729,7 +1729,7 @@ body,
 .output-node span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 9px;
 }
 
@@ -1781,7 +1781,7 @@ body,
 
 .contract-compare span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -1816,7 +1816,7 @@ body,
 .choice span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .choice b {
@@ -1826,7 +1826,7 @@ body,
 
 .choice small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -1849,7 +1849,7 @@ body,
 .sample-buffer-band span,
 .sample-buffer-band b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .sample-buffer-band b {
@@ -1882,7 +1882,7 @@ body,
 
 .format-node span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -1894,7 +1894,7 @@ body,
 
 .format-node small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 7px;
 }
 
@@ -1902,7 +1902,7 @@ body,
   border-bottom: 2px solid var(--line);
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding-bottom: 7px;
   text-align: center;
 }
@@ -1927,7 +1927,7 @@ body,
   color: var(--white);
   display: flex;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   height: 65px;
   justify-content: center;
   width: 65px;
@@ -1938,7 +1938,7 @@ body,
   border-radius: 6px;
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding: 24px 14px;
   text-align: center;
 }
@@ -1951,7 +1951,7 @@ body,
 
 .frame-result span {
   border-left: 4px solid var(--success);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   padding: 8px 12px;
 }
@@ -2003,7 +2003,7 @@ body,
 
 .rotate-arrow span {
   display: block;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .guard-funnel {
@@ -2026,7 +2026,7 @@ body,
   color: var(--white);
   display: flex;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   justify-content: center;
   padding: 16px;
   text-align: center;
@@ -2038,7 +2038,7 @@ body,
 
 .guard-step {
   border-top: 5px solid var(--accent-secondary);
-  padding: 15px 8px 0;
+  padding: 15px 0 0;
 }
 
 .guard-step code,
@@ -2048,14 +2048,15 @@ body,
 
 .guard-step code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
 .guard-step span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 20px;
   margin-top: 8px;
+  white-space: nowrap;
 }
 
 .start-sequence {
@@ -2086,13 +2087,13 @@ body,
 
 .sequence-item span {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
 .sequence-item small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -2150,7 +2151,7 @@ body,
   border-radius: 4px;
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   padding: 8px 12px;
   position: absolute;
@@ -2164,7 +2165,7 @@ body,
 .axis-transform {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-left: 200px;
 }
 
@@ -2258,7 +2259,7 @@ body,
   border-bottom: 3px solid var(--accent-secondary);
   color: var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   padding-bottom: 8px;
   text-align: center;
@@ -2276,7 +2277,7 @@ body,
 
 .readiness-rule span {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   text-align: center;
 }
 
@@ -2288,8 +2289,8 @@ body,
 .stop-flow {
   align-items: stretch;
   display: grid;
-  gap: 12px;
-  grid-template-columns: 1.2fr 30px 1fr 30px 1fr 30px 1fr;
+  gap: 8px;
+  grid-template-columns: 1.25fr 22px 1.15fr 22px 0.9fr 22px 1.15fr;
   margin: 50px 0 30px;
 }
 
@@ -2309,12 +2310,12 @@ body,
 
 .stop-flow b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .stop-flow span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -2355,7 +2356,7 @@ body,
 .writer-shape span {
   color: var(--on-dark-muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -2368,7 +2369,7 @@ body,
 .output-split span {
   border-top: 5px solid var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   padding-top: 18px;
 }
@@ -2393,12 +2394,12 @@ body,
 .setting-list b {
   color: var(--accent-primary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .setting-list code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -2432,7 +2433,7 @@ body,
 .profile-side span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .profile-side b {
@@ -2464,7 +2465,7 @@ body,
   border-radius: 4px 4px 0 0;
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   padding: 9px 12px;
 }
@@ -2482,7 +2483,7 @@ body,
 .interval-labels span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding-top: 8px;
   text-align: center;
 }
@@ -2512,7 +2513,7 @@ body,
 .start-media span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .start-marker {
@@ -2534,7 +2535,7 @@ body,
 }
 
 .start-marker span {
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 6px;
 }
 
@@ -2569,22 +2570,22 @@ body,
 }
 
 .settings-table code {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .settings-table b {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .settings-table span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .settings-head span {
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .gop-timeline {
@@ -2603,7 +2604,7 @@ body,
   border-radius: 4px;
   display: flex;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   height: 62px;
   justify-content: center;
@@ -2625,7 +2626,7 @@ body,
   border-top: 3px solid var(--accent-primary);
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding-top: 8px;
   text-align: center;
 }
@@ -2654,7 +2655,7 @@ body,
 .audio-spec span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .audio-spec b {
@@ -2693,7 +2694,7 @@ body,
 .segment-output span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .segment-output b {
@@ -2762,7 +2763,7 @@ body,
   border-radius: 4px;
   color: var(--white) !important;
   display: inline-block;
-  font-size: 18px;
+  font-size: 22px;
   padding: 12px 16px;
 }
 
@@ -2796,7 +2797,7 @@ body,
 .duration-side span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -2807,7 +2808,7 @@ body,
 
 .duration-side small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 7px;
 }
 
@@ -2837,7 +2838,7 @@ body,
 
 .lane > b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .continuous {
@@ -2845,7 +2846,7 @@ body,
   border-radius: 4px;
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   grid-column: 2 / 6;
   padding: 14px;
   text-align: center;
@@ -2858,7 +2859,7 @@ body,
   border-radius: 4px;
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding: 13px 8px;
   text-align: center;
 }
@@ -2901,13 +2902,13 @@ body,
 
 .bp-source span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
 .bp-gate code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -2939,11 +2940,11 @@ body,
 
 .bp-branches b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .bp-branches span {
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 6px;
 }
 
@@ -2957,7 +2958,7 @@ body,
 
 .tradeoff-line span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   text-align: center;
 }
 
@@ -2990,7 +2991,7 @@ body,
 .clock-column span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .clock-column b {
@@ -3008,7 +3009,7 @@ body,
 
 .manifest-preview code {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 /* Manifest and storage */
@@ -3036,12 +3037,12 @@ body,
 
 .create-stream-flow b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .create-stream-flow span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -3079,20 +3080,20 @@ body,
 
 .state-inputs b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .state-inputs span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .state-render {
   border-bottom: 3px solid var(--accent-primary);
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding-bottom: 7px;
   text-align: center;
 }
@@ -3117,7 +3118,7 @@ body,
 
 .state-output span {
   color: var(--on-dark-muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -3152,12 +3153,12 @@ body,
 .contract-notes b {
   color: var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .contract-notes span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -3180,7 +3181,7 @@ body,
 .render-order span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   grid-column: 1 / 5;
 }
 
@@ -3216,7 +3217,7 @@ body,
 
 .dictionary-step code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3239,7 +3240,7 @@ body,
   color: var(--white);
   display: flex;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   height: 30px;
   justify-content: center;
@@ -3251,7 +3252,7 @@ body,
 }
 
 .growth-step pre {
-  font-size: 18px;
+  font-size: 22px;
   height: 210px;
   max-height: none;
 }
@@ -3300,14 +3301,14 @@ body,
 .atomic-temp b,
 .atomic-new b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .atomic-old span,
 .atomic-temp span,
 .atomic-new span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
@@ -3315,7 +3316,7 @@ body,
   border-bottom: 3px solid var(--success);
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding-bottom: 8px;
   text-align: center;
 }
@@ -3339,7 +3340,7 @@ body,
 }
 
 .publish-order.four-step .publish-step span {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .publish-step {
@@ -3360,11 +3361,11 @@ body,
 .publish-step b {
   color: var(--accent-primary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .publish-step span {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   margin-top: 10px;
 }
@@ -3405,7 +3406,7 @@ body,
 .finish-before span,
 .finish-after span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .finish-before code,
@@ -3424,7 +3425,7 @@ body,
 
 .finish-action code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3433,18 +3434,18 @@ body,
 }
 
 .test-matrix code {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .test-matrix span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .test-head span {
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .playback-compare {
@@ -3477,7 +3478,7 @@ body,
 .playback-path span {
   color: var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3492,7 +3493,7 @@ body,
 
 .playback-path small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -3525,7 +3526,7 @@ body,
 
 .replacement-source span {
   color: var(--on-dark-muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 9px;
 }
 
@@ -3558,7 +3559,7 @@ body,
 .replacement-prod span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3571,14 +3572,14 @@ body,
 .replacement-local small,
 .replacement-prod small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
 .mapping-table {
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr 1.2fr;
   margin-top: 65px;
   padding-top: 15px;
 }
@@ -3586,7 +3587,7 @@ body,
 .mapping-table span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   text-align: center;
 }
 
@@ -3611,7 +3612,7 @@ body,
 .good-order > span {
   color: var(--accent-primary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3661,7 +3662,7 @@ body,
 .race-row > b,
 .race-row em {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .race-row em {
@@ -3680,7 +3681,7 @@ body,
   color: var(--white);
   display: flex;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   height: 44px;
   padding-left: 16px;
 }
@@ -3710,14 +3711,14 @@ body,
 
 .order-equation span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .order-equation code {
   background: var(--ink);
   border-radius: 4px;
   color: var(--white);
-  font-size: 18px;
+  font-size: 22px;
   padding: 8px 12px;
 }
 
@@ -3732,17 +3733,17 @@ body,
 
 .cache-table b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .cache-table span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .cache-table code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3757,7 +3758,7 @@ body,
 .cache-head span {
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .fit-spectrum {
@@ -3786,7 +3787,7 @@ body,
 .fit-side span {
   color: var(--success);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3802,7 +3803,7 @@ body,
 
 .fit-side small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1.5;
   margin-top: 10px;
 }
@@ -3853,7 +3854,7 @@ body,
 .takeaway-grid b {
   color: var(--accent-primary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .takeaway-grid span {
@@ -3866,7 +3867,7 @@ body,
   color: var(--white);
   display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-bottom: 3px;
 }
 
@@ -3890,7 +3891,7 @@ body,
 .closing-footer span {
   color: var(--on-dark-muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 7px;
 }
 
@@ -3937,7 +3938,7 @@ body,
 .terminal-card > span {
   color: var(--on-dark-muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -3949,7 +3950,7 @@ body,
 
 .terminal-card code.muted-line {
   color: var(--on-dark-muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .demo-contract-list {
@@ -3967,12 +3968,12 @@ body,
 .demo-contract-list b {
   color: var(--accent-primary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .demo-contract-list span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .demo-phone-panel {
@@ -4001,7 +4002,7 @@ body,
 .demo-phone-screen code {
   border: 1px solid var(--line);
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   padding: 13px;
 }
 
@@ -4015,7 +4016,7 @@ body,
 
 .demo-phone-screen em {
   color: var(--success);
-  font-size: 18px;
+  font-size: 22px;
   font-style: normal;
   font-weight: 800;
 }
@@ -4041,11 +4042,11 @@ body,
 .demo-check-flow b {
   color: var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .demo-check-flow span {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   margin-top: 12px;
 }
@@ -4095,7 +4096,7 @@ body,
 .tap-to-bytes span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -4120,7 +4121,7 @@ body,
 .demo-observe-line span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .demo-observe-line b {
@@ -4156,13 +4157,13 @@ body,
 
 .object-arrival span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
 .object-arrival code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -4195,18 +4196,18 @@ body,
 .put-pair span {
   color: var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
 }
 
 .put-pair b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .put-pair i {
   color: var(--accent-primary);
-  font-size: 18px;
+  font-size: 22px;
   font-style: normal;
   font-weight: 800;
   text-transform: uppercase;
@@ -4244,7 +4245,7 @@ body,
 .viewer-poll-flow code,
 .viewer-poll-flow span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -4271,6 +4272,10 @@ body,
 .control-plane,
 .drain-lanes {
   grid-template-columns: 1fr 35px 1fr 35px 1fr 35px 1fr;
+}
+
+.drain-lanes {
+  grid-template-columns: 1fr 35px 1fr 35px 1fr;
 }
 
 .four-boundaries {
@@ -4318,7 +4323,7 @@ body,
 .drain-lanes span,
 .drain-lanes small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 9px;
 }
 
@@ -4363,7 +4368,7 @@ body,
 
 .tree-columns small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .segment-list {
@@ -4375,7 +4380,7 @@ body,
 .slidev-layout .segment-list code {
   background: var(--success-soft) !important;
   color: var(--ink) !important;
-  font-size: 18px;
+  font-size: 22px;
   padding: 7px 10px;
 }
 
@@ -4396,7 +4401,7 @@ body,
 .environment-row > b {
   color: var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .environment-row.production > b {
@@ -4411,7 +4416,7 @@ body,
 
 .environment-row > i {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   font-style: normal;
   text-align: center;
 }
@@ -4450,7 +4455,7 @@ body,
 
 .data-plane span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 9px;
 }
 
@@ -4481,12 +4486,12 @@ body,
 .component-pipeline span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .component-pipeline b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 12px;
 }
 
@@ -4526,7 +4531,7 @@ body,
 
 .async-boundary span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .async-boundary b {
@@ -4536,7 +4541,7 @@ body,
 
 .async-boundary code {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 22px;
 }
 
@@ -4580,13 +4585,13 @@ body,
 .pending-equation span,
 .transaction-visual span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .pending-equation b,
 .transaction-visual b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 9px;
 }
 
@@ -4631,13 +4636,13 @@ body,
 }
 
 .retry-steps span {
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 8px;
 }
 
 .retry-steps small {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 6px;
 }
 
@@ -4674,13 +4679,13 @@ body,
 .http-contract-table .contract-head span {
   color: var(--white);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .http-contract-table code,
 .http-contract-table b,
 .http-contract-table span {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .http-contract-table code {
@@ -4704,7 +4709,7 @@ body,
 .monitor-strip span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   text-align: center;
 }
 
@@ -4738,7 +4743,7 @@ body,
 
 .atomic-replace span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -4777,12 +4782,12 @@ body,
 
 .production-additions b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .production-additions span {
   color: var(--muted);
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1.5;
   margin-top: 12px;
 }
@@ -4835,13 +4840,13 @@ body,
 
 .hls-tag-legend code {
   color: var(--accent-secondary);
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 800;
 }
 
 .hls-tag-legend b {
   color: var(--ink);
-  font-size: 17px;
+  font-size: 22px;
 }
 
 .put-sequence {
@@ -4869,12 +4874,12 @@ body,
 .put-sequence span {
   color: var(--muted);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 16px;
+  font-size: 22px;
 }
 
 .put-sequence b {
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 17px;
+  font-size: 22px;
   margin-top: 10px;
 }
 
@@ -4917,7 +4922,7 @@ body,
 
 .fmp4-beginner-model span {
   color: var(--muted);
-  font-size: 17px;
+  font-size: 22px;
 }
 
 .fmp4-beginner-model b {
@@ -4928,7 +4933,7 @@ body,
 
 .fmp4-beginner-model small {
   color: var(--muted);
-  font-size: 17px;
+  font-size: 22px;
   margin-top: 9px;
 }
 
@@ -4959,7 +4964,7 @@ body,
 
 .term-definition span {
   color: var(--ink);
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 700;
 }
 
@@ -4975,7 +4980,7 @@ body,
 .playable-equation b {
   border-top: 4px solid var(--accent-secondary);
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 18px;
+  font-size: 22px;
   min-height: 72px;
   padding-top: 12px;
   text-align: center;
@@ -4991,7 +4996,7 @@ body,
 
 .playable-equation small {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 22px;
 }
 
 .playable-equation i {
@@ -5006,12 +5011,12 @@ body,
   color: var(--muted);
   display: block;
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: 22px;
   font-weight: 600;
   margin-top: 5px;
 }
 
-/* Export and small-screen stability */
+
 @media (max-width: 900px) {
   .slidev-layout {
     padding: 48px 64px 42px;
