@@ -82,7 +82,7 @@ class: speaker-intro
 
 <div class="kicker">TODAY'S ROUTE</div>
 
-# 今日は6章で、CameraからViewerまでを追う
+# 話すこと
 
 <div class="chapter-overview">
   <div><b>01</b><span>HLSが<br>ライブになる条件</span></div>
