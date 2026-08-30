@@ -86,7 +86,7 @@ class: speaker-intro
 
 <div class="chapter-overview">
   <div><b>01</b><span>HLSがライブになる仕組み</span></div>
-  <div><b>02</b><span>サンプルアプリを動かす</span></div>
+  <div><b>02</b><span>生成と公開を分ける</span></div>
   <div><b>03</b><span>映像と音声の時間軸調整</span></div>
   <div><b>04</b><span>約2秒のfMP4を生成</span></div>
   <div><b>05</b><span>playlistの更新</span></div>
@@ -589,7 +589,7 @@ Capture、fMP4化、オブジェクト公開、playlist追従再生。境界を�
 <div class="route">
   <div><b>01</b><span>HLSの最小形</span></div>
   <i></i>
-  <div><b>02</b><span>iOSの責務分割</span></div>
+  <div><b>02</b><span>callbackとTaskの境界</span></div>
   <i></i>
   <div><b>03</b><span>CMSampleBufferと時刻</span></div>
   <i></i>
@@ -738,149 +738,64 @@ class: chapter
 <div class="chapter-no">02</div>
 <div class="chapter-rule"></div>
 
-# 動くサンプルアプリを、<br>4つの責務へ分ける
-<p>UI / orchestration / media / publication</p>
+# 生成はcallback、<br>公開はTaskへ分ける
+<p>AVFoundation callback → HLSFragment → AsyncThrowingStream → Publisher actor</p>
 
 <!--
 [Timing checkpoint: 13:30]
 
-HLSの全体像と冒頭で動かしたiosdc2026HLSSampleを、画面からHTTP PUTまで順に分解します。
-個人アプリ固有の認証やAWS構成を外し、HLS生成と公開順序を追える形にしています。
+ここから、端末内の処理を「同期callbackで生成する側」と「非同期Taskで公開する側」に分けます。
+型名ではなく、メディア処理がネットワーク待ちに巻き込まれない境界を先に捉えます。
 -->
 
 ---
 
-<div class="kicker">FOUR OWNERS</div>
+<div class="kicker">SYNC CALLBACK → ASYNC TASK</div>
 
-# 4つの型で生成と公開を分ける
+# Writerを待たせず、生成したfragmentを非同期で公開する
 
-<div class="owner-lanes">
-  <div><span>UI</span><b>SampleStreamViewModel</b><small>idle / streaming / completed</small></div>
-  <div><span>FACADE</span><b>SampleHLSStreamer</b><small>RecorderとPublisherを接続</small></div>
-  <div><span>GENERATE</span><b>HLSSegmentRecorder</b><small>capture / writer / media clock</small></div>
-  <div><span>PUBLISH</span><b>HLSStreamPublisher</b><small>HTTP PUT / playlist / retry</small></div>
+<div class="async-boundary-flow">
+  <div class="async-boundary-stage callback">
+    <span>SYNC CALLBACK</span>
+    <b>Writerへ渡す</b>
+    <small>Camera / Mic → CMSampleBuffer</small>
+    <code>writingQueue</code>
+  </div>
+  <i>→</i>
+  <div class="async-boundary-stage bridge">
+    <span>BRIDGE</span>
+    <b>HLSFragment</b>
+    <small>initialization / media</small>
+    <code>AsyncThrowingStream</code>
+  </div>
+  <i>→</i>
+  <div class="async-boundary-stage task">
+    <span>ASYNC TASK</span>
+    <b>保存してから公開</b>
+    <small>HTTP PUT → playlist更新</small>
+    <code>Publisher actor</code>
+  </div>
 </div>
+
+<div class="async-boundary-types">HLSSegmentRecorder <i>→</i> HLSStreamPublisher</div>
+<div class="bottom-claim">メディア処理はネットワークを待たない。公開順はactorが守る</div>
 
 <!--
-画面は4領域です。
-カメラ、サーバー接続、出力情報、playlist本文を同時に出します。
-録画中にsegment数とplaylist本文がどう変わるかを、実装を読む前に観察できます。
+左側はAVFoundationとの同期callback境界です。
+VideoDataOutputとAudioDataOutputのsetSampleBufferDelegateには、CMSampleBufferを順番どおり受け取るserial callback queueを指定します。
+Writer delegateがfragment Dataを返したら、HLSSegmentRecorderはHLSFragmentとしてAsyncThrowingStreamへ渡し、callbackからすぐ戻ります。
 
-公開サンプルは、S3の代わりにMacのHTTPサーバーへ同じ形のオブジェクトをPUTします。
-個人アプリとの差分は署名URL、Lambdaによるplaylist更新、CloudFrontです。iOSが作るinitとm4sは同じです。
+右側ではHLSStreamPublisherのTaskがstreamを消費し、HTTP PUTとplaylist更新をawaitします。
+Publisher actorが公開順、retry、playlist状態を直列化するため、メディア処理はネットワーク待ちに巻き込まれません。
 
-UI状態、メディア状態、アップロード状態を分けています。
-HLS固有の時刻処理もS3の公開順も、ViewModelへ漏らしません。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/ContentView.swift
-- iosdc2026HLSSample/README.md
--->
-
----
-
-<div class="kicker">ONE TAP</div>
-
-# 配信開始タップで、fragmentの生成と公開をつなぐ
-
-<div class="call-chain">
-  <div><span>View</span><code>vm.start()</code></div>
-  <b>→</b>
-  <div><span>ViewModel</span><code>streamer.startRecording(serverBaseURL:)</code></div>
-  <b>→</b>
-  <div><span>Recorder</span><code>startRecording() → fragment stream</code></div>
-  <b>→</b>
-  <div><span>Publisher</span><code>publish(fragments)</code></div>
-</div>
-
-<div class="call-return">
-  <span>AsyncThrowingStream&lt;HLSFragment&gt;</span>
-  <i></i>
-  <span>initialization / media</span>
-</div>
-
-<!--
-タップはViewModelからStreamerへ入り、Recorderが返すAsyncThrowingStreamをPublisherのconsumer Taskへ渡します。
-RecorderはHLSFragmentを生成し、PublisherがHTTP PUTとplaylist更新を順番に処理します。
-公開サンプルではこの時点でS3やpresignを登場させず、「生成したfragmentを保存してからplaylistへ載せる」責務だけを見せます。
+Recorderはstreamのcontinuationを準備してからWriterを有効にします。具体的な開始コードはAppendixへ移しました。
+次の章では左側のHLSSegmentRecorderへ入り、映像と音声の時刻をそろえる処理を見ます。
 
 [Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
--->
-
----
-
-<div class="kicker">CONCURRENCY MAP</div>
-
-# Queueとactorは、守る状態が違う
-
-<div class="concurrency-map">
-  <div class="concurrency-row">
-    <b>MainActor</b><span>ViewModelの表示状態</span><i class="cobalt"></i>
-  </div>
-  <div class="concurrency-row">
-    <b>sessionQueue</b><span>AVCaptureSessionの構成・start / stop</span><i class="coral"></i>
-  </div>
-  <div class="concurrency-row">
-    <b>writingQueue</b><span>CMSampleBuffer順序・AVAssetWriter状態</span><i class="coral"></i>
-  </div>
-  <div class="concurrency-row">
-    <b>HLSStreamPublisher actor</b><span>公開順・retry・playlist状態</span><i class="green"></i>
-  </div>
-</div>
-
-<div class="bottom-claim">1本の巨大なロックではなく、責任ごとに直列化する</div>
-
-<!--
-CaptureSessionとWriterは別のserial queue、HLSの公開順はactorで守ります。
-ここでDispatchQueueを使うのは、Swift Concurrencyへ置き換えられなかったからではありません。
-
-AVCaptureSessionのstartRunningは呼び出し元をblockするため、Appleはserial queueで実行してメインqueueを塞がないよう案内しています。
-また、VideoDataOutputとAudioDataOutputのsetSampleBufferDelegateは、CMSampleBufferを順番どおり届けるためserial callback queueを要求しています。
-そのためAVFoundationとの境界ではDispatchQueueを使い、生成したHLSFragment以降をAsyncThrowingStreamとactorで扱います。
-
-サンプルiOS側の責務分割です。
-画面状態、配信の組み立て、AVFoundation、公開順序、HTTPを別の型にしています。ここから中央のRecorderを深掘りします。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample
-- Apple: https://developer.apple.com/documentation/avfoundation/avcapturesession
 - Apple: https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutput/setsamplebufferdelegate(_:queue:)
 - Apple: https://developer.apple.com/documentation/avfoundation/avcaptureaudiodataoutput/setsamplebufferdelegate(_:queue:)
--->
-
----
-
-<div class="kicker">START ORDER</div>
-
-# streamを準備してから、Publisherへ渡す
-
-```swift {1|3-5|7-10}
-let fragments = try await recorder.startRecording()
-
-let uploadTask = Task {
-    await publisher.publish(fragments)
-}
-
-activeStream = ActiveStream(
-    publisher: publisher,
-    uploadTask: uploadTask
-)
-```
-
-<!--
-RecorderはAsyncThrowingStreamのcontinuationを保持してからWriterを有効にし、準備済みのstreamを返します。
-そのため、PublisherのTaskが動き出す前にinit Dataが届いてもstream内にbufferされます。
-
-Writer delegateは同期callbackです。
-そこでDataをAsyncThrowingStreamへ渡してすぐ戻り、HTTP処理はPublisher側でawaitします。メディア処理とネットワーク待ちの境界です。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 -->
 
 ---
@@ -895,7 +810,7 @@ class: chapter
 <p>Camera / Mic → CMSampleBuffer → one shared timeline</p>
 
 <!--
-[Timing checkpoint: 16:00]
+[Timing checkpoint: 15:00]
 
 ここからHLSSegmentRecorderを見ます。
 最初の難所はエンコード設定ではなく、映像と音声を同じ時間軸へ載せることです。
@@ -2091,6 +2006,37 @@ class: chapter
 
 [Sources]
 - iosdc2026HLSSample repository tree
+-->
+
+---
+
+<div class="kicker">START ORDER · APPENDIX</div>
+
+# streamを準備してから、Publisherへ渡す
+
+```swift {1|3-5|7-10}
+let fragments = try await recorder.startRecording()
+
+let uploadTask = Task {
+    await publisher.publish(fragments)
+}
+
+activeStream = ActiveStream(
+    publisher: publisher,
+    uploadTask: uploadTask
+)
+```
+
+<!--
+RecorderはAsyncThrowingStreamのcontinuationを保持してからWriterを有効にし、準備済みのstreamを返します。
+そのため、PublisherのTaskが動き出す前にinit Dataが届いてもstream内にbufferされます。
+
+Writer delegateは同期callbackです。
+そこでDataをAsyncThrowingStreamへ渡してすぐ戻り、HTTP処理はPublisher側でawaitします。メディア処理とネットワーク待ちの境界です。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
 ---
