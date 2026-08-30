@@ -87,9 +87,9 @@ class: speaker-intro
 <div class="chapter-overview">
   <div><b>01</b><span>HLSがライブになる仕組み</span></div>
   <div><b>02</b><span>サンプルアプリを動かす</span></div>
-  <div><b>03</b><span>映像と音声を同じ時間軸へ</span></div>
+  <div><b>03</b><span>映像と音声の時間軸調整</span></div>
   <div><b>04</b><span>約2秒のfMP4を生成</span></div>
-  <div><b>05</b><span>保存してからplaylistへ公開</span></div>
+  <div><b>05</b><span>playlistの更新</span></div>
   <div><b>06</b><span>最後の公開まで完了を管理</span></div>
 </div>
 
