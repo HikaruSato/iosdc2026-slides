@@ -85,6 +85,7 @@ class: speaker-intro
 # 話すこと
 
 <div class="chapter-overview">
+  <div><b>WHY</b><span>なぜ端末内HLSを作ろうと思ったのか</span></div>
   <div><b>01</b><span>HLSがライブになる仕組み</span></div>
   <div><b>02</b><span>端末内でHLSを生成</span></div>
   <div><b>03</b><span>映像と音声の時間軸調整</span></div>
@@ -94,8 +95,73 @@ class: speaker-intro
 </div>
 
 <!--
-最初にHLSがライブになる仕組みを確認し、動くサンプルアプリを見ます。
+最初に、なぜ端末内でHLSを作ろうと思ったのか、そのきっかけと実装できるまでの経緯を話します。
+続いてHLSがライブになる仕組みを確認し、動くサンプルアプリを見ます。
 その後、カメラとマイクの入力、時刻補正、fMP4生成、保存とplaylist公開、停止時の完了管理まで順番に追います。
+-->
+
+---
+
+<div class="kicker">WHY</div>
+<div class="story-split">
+  <div>
+    <h1>撮影後のアップロードを待たずに、動画をURLで共有したい</h1>
+    <p class="lead">HLSなら、撮影中から小さくアップロードし、撮影後URLで再生できる</p>
+  </div>
+  <div class="why-files">
+    <div class="why-file large"><span>1ファイル</span><b>recording.mov</b><small>撮影後にまとめてupload</small></div>
+    <div class="why-divider">↓ 待ち時間をなくす</div>
+    <div class="why-segments">
+      <span>HLS</span>
+      <b>init.mp4</b><b>001.m4s</b><b>002.m4s</b>
+      <small>撮影中からupload → URLで共有</small>
+    </div>
+  </div>
+</div>
+
+<!--
+この実装のきっかけは、子どもの動画を家族へ送るときの待ち時間でした。
+1ファイルでは、撮影を終えて大きな動画をアップロードし終わるまで、共有URLを渡せません。
+
+HLSなら撮影中から短いsegmentを順次アップロードでき、同じplaylist URLを共有できます。
+撮影後の大きなアップロードを待たず、URLで動画を共有したい。それがHLSを使おうと思った理由です。
+-->
+
+---
+
+<div class="kicker">ORIGIN STORY · IMPLEMENTATION</div>
+
+# macOS向けAppleサンプルが、iPhone実装の突破口になった
+
+<div class="implementation-story origin-story">
+  <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>再生できるHLSとして<br>実用まで至らず</small></div>
+  <i>→</i>
+  <div class="reference"><span>Apple fmp4Writer</span><b>正しい生成手順を確認</b><small>Writer設定 · 時刻補正<br>segment delegate</small></div>
+  <i>→</i>
+  <div class="adapt"><span>iPhone local</span><b>fMP4生成に成功</b><small>Camera / Micから<br>init.mp4 + .m4s</small></div>
+  <i>→</i>
+  <div class="product"><span>MomentNow</span><b>ライブ配信へ発展</b><small>撮影中からupload<br>playlistを更新</small></div>
+</div>
+
+<div class="bottom-claim">端末内生成で変換サーバーを減らせると分かり、MomentNowの開発へ進んだ</div>
+
+<div class="source">Apple: Writing fragmented MPEG-4 files for HTTP Live Streaming</div>
+
+<!--
+HLSを端末内で生成できれば、映像変換サーバーのコストを最小限にできると考え、実装を試行錯誤していました。
+2025年3月ごろ、最初はAIへ実装させてみましたが、再生できるHLSとして実用まで到達できませんでした。
+
+突破口になったのがApple公式のfmp4Writerです。
+公式プロジェクトはmacOS 11以降向けのCommand Line Toolで、movie fileをAVAssetReaderで読み込みます。
+一方、AVAssetWriterのHLS profile、URLなしWriter、10秒の時刻offset、segment delegateという核心部分はiOSでも利用できます。
+
+入力をAVCaptureVideoDataOutputとAVCaptureAudioDataOutputへ置き換え、iPhone内でinit.mp4とm4sを生成できました。
+端末内生成なら変換サーバーを持たずに配信できると分かり、MomentNowのライブ配信機能として開発を進めました。
+このトークは、そのローカル生成を配信として成立させるまでの設計を扱います。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
+- https://developer.apple.com/videos/play/wwdc2020/10011/
 -->
 
 ---
@@ -110,7 +176,7 @@ class: chapter
 <p>短い動画ファイル + 更新され続けるplaylist</p>
 
 <!--
-[Timing checkpoint: 00:45]
+[Timing checkpoint: 02:30]
 
 最初に、HLSのライブ配信が何を配っているのかを大きく捉えます。
 HLSでは、長い動画を短い断片へ分け、その再生順を示すplaylistを配ります。ライブ中はplaylistが更新され続けます。
@@ -274,70 +340,6 @@ API、保存、配信、状態管理は残ります。なくすのは、映像�
 
 [Sources]
 - Apple WWDC20 Session 10011: Author fragmented MPEG-4 content with AVAssetWriter
--->
-
----
-
-<div class="kicker">WHY</div>
-<div class="story-split">
-  <div>
-    <h1>1ファイルだと撮影後、共有するためのアップロードに時間がかかる</h1>
-    <p class="lead">撮影中からアップロードできていれば共有も楽</p>
-  </div>
-  <div class="why-files">
-    <div class="why-file large"><span>撮影終了後</span><b>recording.mov</b><small>大きな1ファイルを送信</small></div>
-    <div class="why-divider">↓</div>
-    <div class="why-segments">
-      <span>撮影中</span>
-      <b>init.mp4</b><b>001.m4s</b><b>002.m4s</b>
-      <small>小さく区切って順次送信</small>
-    </div>
-  </div>
-</div>
-
-<!--
-この実装のきっかけは、子どもの動画を家族へ送るときの待ち時間でした。
-撮影し終わってから大きなファイルを送るのではなく、撮影中から小さく届けたい。それがHLSを選んだ理由です。
-
-個人開発では、映像変換サーバーの常時運用が重い。
-そこで用途を絞り、カメラを持っているiPhone自身にエンコードとセグメント生成を任せます。
--->
-
----
-
-<div class="kicker">ORIGIN STORY · IMPLEMENTATION</div>
-
-# macOS向けAppleサンプルが、iPhone実装の突破口になった
-
-<div class="implementation-story origin-story">
-  <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>再生できるHLSとして<br>実用まで至らず</small></div>
-  <i>→</i>
-  <div class="reference"><span>Apple fmp4Writer</span><b>正しい生成手順を確認</b><small>Writer設定 · 時刻補正<br>segment delegate</small></div>
-  <i>→</i>
-  <div class="adapt"><span>iPhone local</span><b>fMP4生成に成功</b><small>Camera / Micから<br>init.mp4 + .m4s</small></div>
-  <i>→</i>
-  <div class="product"><span>MomentNow</span><b>ライブ配信へ発展</b><small>撮影中からupload<br>playlistを更新</small></div>
-</div>
-
-<div class="bottom-claim">iPhoneで生成できたことが、個人アプリのライブ配信実装の起点</div>
-
-<div class="source">Apple: Writing fragmented MPEG-4 files for HTTP Live Streaming</div>
-
-<!--
-端末内でfMP4を生成するアイデアを思いつき、2025年3月ごろ最初はAIへ実装させてみました。
-しかし、再生できるHLSとして実用まで到達できませんでした。
-
-突破口になったのがApple公式のfmp4Writerです。
-公式プロジェクトはmacOS 11以降向けのCommand Line Toolで、movie fileをAVAssetReaderで読み込みます。
-一方、AVAssetWriterのHLS profile、URLなしWriter、10秒の時刻offset、segment delegateという核心部分はiOSでも利用できます。
-
-入力をAVCaptureVideoDataOutputとAVCaptureAudioDataOutputへ置き換え、まずiPhone内でinit.mp4とm4sを生成できました。
-この成功で「端末でHLSを作れる」と確認できたことが、MomentNowで撮影中からuploadしてplaylistを更新するライブ配信実装の起点です。
-このトークは、そのローカル生成を配信として成立させるまでの設計を扱います。
-
-[Sources]
-- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
-- https://developer.apple.com/videos/play/wwdc2020/10011/
 -->
 
 ---
