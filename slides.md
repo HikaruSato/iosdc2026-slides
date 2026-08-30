@@ -527,7 +527,7 @@ class: demo-step
 
 <div class="kicker">DEMO RESULT · REAL OUTPUT</div>
 
-# デモ後に残る、3種類のHLSファイル
+# 配信後に残る、3種類のHLSファイル
 
 <div class="real-output-tree">
   <div class="tree-root">server/data/streams/<b>stream-20260818-225315-C7A2AB11/</b></div>
