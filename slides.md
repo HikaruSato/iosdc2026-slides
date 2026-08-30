@@ -1210,10 +1210,10 @@ Local WriterはHEVC/AAC、1080×1920、5Mbpsの1本のMP4を一時領域へ作�
 
 <div class="kicker">AVFOUNDATION COMMON · INPUT FORMAT</div>
 
-# CameraのNV12をWriterがH.264に圧縮
+# Cameraの未圧縮映像を<br>AVAssetWriterがH.264に圧縮
 
 <div class="format-bridge">
-  <div class="format-node raw"><span>Capture</span><b>420f / NV12</b><small>pixel buffer</small></div>
+  <div class="format-node raw"><span>Capture</span><b>未圧縮映像</b><small>video frame</small></div>
   <div class="format-arrow">append</div>
   <div class="format-node encoded"><span>Writer</span><b>H.264 High</b><small>encoded media</small></div>
 </div>
