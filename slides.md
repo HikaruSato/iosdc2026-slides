@@ -90,7 +90,7 @@ class: speaker-intro
   <div><b>03</b><span>映像と音声の時間軸調整</span></div>
   <div><b>04</b><span>約2秒のfMP4を生成</span></div>
   <div><b>05</b><span>playlistの更新</span></div>
-  <div><b>06</b><span>最後の公開まで完了を管理</span></div>
+  <div><b>06</b><span>配信の完了</span></div>
 </div>
 
 <!--
