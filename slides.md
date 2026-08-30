@@ -370,7 +370,7 @@ class: statement
 
 <div class="kicker">LIVE DEMO · PUBLIC SAMPLE</div>
 
-# 仕組みが見えたところで、公開サンプルアプリを動かす
+# 公開サンプルアプリを動かす
 
 <div class="live-demo-grid">
   <div class="live-demo-phone">
