@@ -598,7 +598,7 @@ Capture、fMP4化、オブジェクト公開、playlist追従再生。境界を�
   <div><b>05</b><span>storage保存とplaylist公開</span></div>
 </div>
 
-<div class="repo-line">Public at iOSDC 2026 / iosdc2026HLSSample</div>
+<div class="repo-line">https://github.com/HikaruSato/iosdc2026HLSSample</div>
 
 <!--
 HLSの最小形を確認し、Cameraから届く1 frameがfMP4へ入り、保存後にplaylistへ載ってViewerへ届くまでを追います。
