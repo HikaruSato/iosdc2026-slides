@@ -426,10 +426,174 @@ class: statement
 ここまで確認したHLSの仕組みを、公開サンプルで実際に動かします。
 iPhoneはHLSを生成してMacへHTTP PUTし、MacのViewer（Playerを使う再生画面）は同じファイルをHTTP GETして追従再生します。
 
-会場Wi-Fiが不安定な場合はライブ操作を省略し、Appendixの静止画デモ5枚を説明します。
+会場Wi-Fiが不安定な場合はライブ操作を省略し、次の5枚で同じ流れを説明します。ライブデモが成功した場合は、この5枚を省略します。
 
 [Sources]
 - iosdc2026HLSSample/README.md
+-->
+
+---
+class: demo-step
+---
+
+<div class="kicker">PUBLIC SAMPLE FLOW · 1 / 5</div>
+
+# Server は「PUTされたファイルを残すだけ」
+
+<div class="demo-command-layout">
+  <div class="terminal-card">
+    <span>Mac</span>
+    <code>$ python3 server/server.py</code>
+    <code class="muted-line">Viewer: http://localhost:8080</code>
+    <code class="muted-line">iPhone server URL: http://192.168.x.x:8080</code>
+  </div>
+  <div class="demo-contract-list">
+    <div><b>PUT</b><span>init.mp4 / m4s / m3u8</span></div>
+    <div><b>DISK</b><span>server/data/streams/...</span></div>
+    <div><b>GET</b><span>同じファイルをViewerへ返す</span></div>
+  </div>
+</div>
+
+<!--
+[Optional demo walkthrough: ライブデモ成功時は省略]
+
+デモ用サーバーを起動します。
+ここには映像変換処理がありません。受け取ったHTTP bodyをファイルとして置き換え、GETで返すだけです。
+
+配信開始の前に接続確認を押します。
+HTTPHLSClientがhealth endpointへGETし、HTTP成功（2xx）なら接続済みにします。デモ中にURL誤りを早く見つけるための一手です。
+
+[Sources]
+- iosdc2026HLSSample/README.md
+- iosdc2026HLSSample/server/server.py
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HTTPHLSClient.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/ContentView.swift
+-->
+
+---
+class: demo-step
+---
+
+<div class="kicker">PUBLIC SAMPLE FLOW · 2 / 5</div>
+
+# 「配信開始」で、iPhoneがHLS生成を始める
+
+<div class="tap-to-bytes">
+  <div class="tap-button">● 配信開始</div>
+  <i>→</i>
+  <div><b>Camera + Mic</b><span>video frame / audio block<br>（CMSampleBuffer）</span></div>
+  <i>→</i>
+  <div class="hot"><b>AVAssetWriter</b><span>圧縮してHLS用Dataへ分割</span></div>
+</div>
+
+<div class="demo-observe-line">
+  <span>elapsed <b>0.0 →</b></span>
+  <span>segment <b>0 →</b></span>
+</div>
+
+<!--
+[Optional demo walkthrough: ライブデモ成功時は省略]
+
+配信開始を押します。
+Cameraから約1 frame、Micから短いaudio blockずつCMSampleBufferとして届きます。
+AVAssetWriterは映像・音声を圧縮し、ファイルURLではなくdelegateからfMP4のDataを返します。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+class: demo-step
+---
+
+<div class="kicker">PUBLIC SAMPLE FLOW · 3 / 5</div>
+
+# 最初に届くのは、1回だけのinit.mp4
+
+<div class="object-arrival">
+  <div class="arrival-time"><b>t ≈ 0</b><span>initialization callback</span></div>
+  <i>→</i>
+  <div class="arrival-object init"><b>init.mp4</b><span>再生を始めるための設定</span></div>
+  <i>→</i>
+  <div class="arrival-path"><code>PUT /streams/{id}/init.mp4</code></div>
+</div>
+
+<div class="bottom-claim">media segmentより先に、再生の前提を保存する</div>
+
+<!--
+[Optional demo walkthrough: ライブデモ成功時は省略]
+
+delegateの最初のcallbackはinitializationです。
+HLSStreamPublisherはinit.mp4の成功を覚え、これが済むまでmedia segmentを受け付けません。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+-->
+
+---
+class: demo-step
+---
+
+<div class="kicker">PUBLIC SAMPLE FLOW · 4 / 5</div>
+
+# 以後は約2秒ごとに、2つのPUTが続く
+
+<div class="put-sequence">
+  <div><span>segment 1</span><b>PUT 000001.m4s</b></div>
+  <i>→</i>
+  <div class="playlist-step"><span>公開</span><b>PUT playlist.m3u8</b></div>
+  <i>→</i>
+  <div><span>segment 2</span><b>PUT 000002.m4s</b></div>
+  <i>→</i>
+  <div class="playlist-step"><span>公開</span><b>PUT playlist.m3u8</b></div>
+</div>
+
+<div class="bottom-claim">playlistが指すのは、保存に成功したsegmentだけ</div>
+
+<!--
+[Optional demo walkthrough: ライブデモ成功時は省略]
+
+約2秒ごとにmedia segmentができます。
+大事なのは、m4sをPUTしてからplaylistを置き換える順番です。Playerが404になる参照を先に公開しません。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+-->
+
+---
+class: demo-step viewer-demo-step
+---
+
+<div class="kicker">PUBLIC SAMPLE FLOW · 5 / 5</div>
+
+# Viewerは最新streamを見つけ、playlistを追いかける
+
+<div class="viewer-poll-flow">
+  <div><b>1秒ごと</b><code>GET /api/streams</code></div>
+  <i>→</i>
+  <div><b>最新を選択</b><code>playlistURL</code></div>
+  <i>→</i>
+  <div class="viewer-live"><b>LIVE</b><span>Safari / AVPlayer / hls.js</span></div>
+</div>
+
+<div class="demo-observe-line">
+  <span>STREAM <b>stream-...</b></span>
+  <span>SEGMENTS <b>1 → 2 → 3</b></span>
+  <span>PLAYLIST <b>/streams/.../playlist.m3u8</b></span>
+</div>
+
+<!--
+[Optional demo walkthrough: ライブデモ成功時は省略]
+
+MacのViewerは1秒ごとにstream一覧を取得し、更新時刻が最も新しい配信を選びます。
+SafariはネイティブHLS、それ以外は同梱したhls.jsで再生します。
+同じplaylist URLをiOSのAVPlayerへ渡し、WebとiOSの両方で再生を確認します。
+
+[Sources]
+- iosdc2026HLSSample/server/static/app.js
+- Apple: Using AVFoundation to play and persist HTTP live streams
 -->
 
 ---
@@ -605,6 +769,34 @@ Capture側の3 objectとWriter側の3 objectを、2種類のdelegate callbackで
 
 ---
 
+<div class="kicker">AUDIO SESSION</div>
+
+# カメラ構成前に、録音用AudioSessionを有効化
+
+```swift
+let audio = AVAudioSession.sharedInstance()
+try audio.setCategory(
+    .playAndRecord,
+    mode: .videoRecording,
+    options: [.defaultToSpeaker, .allowBluetoothHFP]
+)
+try audio.setActive(true)
+```
+
+<div class="contract-compare">
+  <div><span>Capture</span><b>camera + microphone</b></div>
+  <div><span>Route</span><b>speaker + Bluetooth HFP</b></div>
+</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+録音権限だけではなく、AVAudioSessionのcategoryとmodeを先に設定します。
+Bluetooth HFPを含む入力routeを許可しつつ、端末側の再生はspeakerを既定にしています。
+-->
+
+---
+
 <div class="kicker">CAPTURE TOPOLOGY</div>
 
 # CaptureSessionが、Camera / MicをDataOutputへつなぐ
@@ -634,6 +826,42 @@ DataOutputを使うことで、videoは約1 frame、audioは短いblockごとの
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">ONE CAPTURE, THREE OUTPUTS</div>
+
+# 1つのCaptureSessionを、3つの用途で使う
+
+<div class="capture-branches">
+  <div class="capture-branch-source"><span>Camera + Mic</span><b>CaptureSession</b></div>
+  <div class="capture-branch-lines"><i></i><i></i><i></i></div>
+  <div class="capture-branch-targets">
+    <div class="preview"><span>画面表示</span><b>PreviewLayer</b><small>配信中も表示</small></div>
+    <div class="hls"><span>ライブ配信</span><b>H.264 / AAC → fMP4</b><small>約2秒ごとにupload</small></div>
+    <div class="local"><span>ローカル保存</span><b>HEVC / AAC → MP4</b><small>MomentNowのみ · 1080 × 1920</small></div>
+  </div>
+</div>
+
+<div class="local-recording-result">
+  <span>recording.mp4</span><i>→</i><b>元動画としてupload</b><i>+</i><b>設定時は写真ライブラリへ保存</b>
+</div>
+
+<div class="bottom-claim">公開サンプルはPreview + HLS。MomentNowは保存用Writerも並行する</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+PreviewはAVCaptureVideoPreviewLayerへ同じCaptureSessionを接続するため、配信中も画面表示を続けられます。
+MomentNowでは同じ元のCMSampleBufferを、HLS用とローカルMP4用の2つのAVAssetWriterへ分岐します。
+停止時に両Writerをfinishし、ローカルMP4は元動画として別途uploadします。設定が有効なら写真ライブラリへも保存します。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/CameraPreviewView.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamView.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamViewModel.swift
 -->
 
 ---
@@ -684,6 +912,62 @@ AppleのAPIはVideoのcallback queueにserial queueを要求し、frameの到着
 
 ---
 
+<div class="kicker">ORIENTATION</div>
+
+# 縦向きは、video connectionへ90度を指定
+
+<div class="orientation-visual">
+  <div class="landscape-frame">1280 × 720</div>
+  <div class="rotate-arrow">↻ <span>90°</span></div>
+  <div class="portrait-frame">720 × 1280</div>
+</div>
+
+```swift
+if let connection = videoOutput.connection(with: .video),
+   connection.isVideoRotationAngleSupported(90) {
+    connection.videoRotationAngle = 90
+}
+```
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+出力サイズはportraitで指定し、video connectionへ90度のrotation angleを設定します。
+配信中の向き変更は扱わず、portrait 90度で固定します。
+-->
+
+---
+
+<div class="kicker">CONFIG</div>
+
+# 上り回線に合わせて、配信品質を選ぶ
+
+```swift
+let profile: (CGSize, Int) = switch quality {
+case .high:   (.init(width: 720, height: 1280), 2_500_000)
+case .medium: (.init(width: 720, height: 1280), 1_500_000)
+case .low:    (.init(width: 480, height: 854),    900_000)
+}
+```
+
+<div class="config-rail">
+  <div><b>network状態</b><span>constrained / expensive</span></div>
+  <div><b>API応答</b><span>配信準備の待ち時間</span></div>
+  <div><b>test upload</b><span>上り速度</span></div>
+  <div><b>2.0 sec</b><span>segment target</span></div>
+</div>
+
+<div class="source">LiveSegmentRecorder.Config.resolved / AutoStreamingQualityResolver</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+個人アプリではNWPathと小さなprobe PUTから、high、medium、lowの1品質を配信開始前に選びます。
+途中でrenditionを切り替えるABRではなく、端末の上り回線に合わせた開始時の選択です。
+-->
+
+---
+
 <div class="kicker">INPUT FORMAT → VIDEO ENCODE</div>
 
 # Cameraの未圧縮映像を、AVAssetWriterがH.264へ圧縮
@@ -716,6 +1000,59 @@ HighはApple SDKで指定できるH.264 profileの名前です。
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">VIDEO SETTINGS</div>
+
+# 配信用videoフォーマットは、互換性と上り帯域を優先する
+
+<div class="settings-table">
+  <div class="settings-head"><span>KEY</span><span>VALUE</span><span>INTENT</span></div>
+  <div><code>AVVideoCodecKey</code><b>H.264</b><span>広い再生互換性</span></div>
+  <div><code>Width / Height</code><b>480p / 720p</b><span>quality別に選択</span></div>
+  <div><code>AverageBitRate</code><b>0.9–2.5 Mbps</b><span>上り回線へ追従</span></div>
+  <div><code>ProfileLevel</code><b>High Auto</b><span>encoder profile</span></div>
+  <div><code>FrameReordering</code><b>false</b><span>decode順を単純化</span></div>
+</div>
+
+<div class="source">LiveSegmentRecorder.makeHLSVideoSettings()</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+個人アプリはH.264 portraitで、品質に応じて480pまたは720p、0.9から2.5Mbpsを選びます。
+端末保存品質ではなく、ネットワークへ継続的に送れる配信品質として設定します。
+-->
+
+---
+
+<div class="kicker">AUDIO SETTINGS</div>
+
+# AudioはAAC mono、品質別に48–96kbps
+
+<div class="audio-spec">
+  <div><span>FORMAT</span><b>AAC</b></div>
+  <div><span>CHANNEL</span><b>mono</b></div>
+  <div><span>SAMPLE RATE</span><b>44.1 kHz</b></div>
+  <div><span>BITRATE</span><b>48–96 kbps</b></div>
+</div>
+
+```swift
+[
+    AVFormatIDKey: kAudioFormatMPEG4AAC,
+    AVNumberOfChannelsKey: 1,
+    AVSampleRateKey: 44_100,
+    AVEncoderBitRateKey: config.audioBitrate
+]
+```
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+音声はAAC、mono、44.1kHzで、low 48、medium 64、high 96kbpsです。
+家族向けの短い映像という用途に合わせ、stereoより送信量を優先しています。
 -->
 
 ---
@@ -1045,6 +1382,30 @@ Writerのsessionは最初のvideo frameで開始します。
 
 ---
 
+<div class="kicker">INITIAL START TIME</div>
+
+# Writerの最初のsegmentは、10秒起点に固定
+
+<div class="start-time-visual">
+  <div class="start-empty"><span>0</span><i></i><i></i><i></i><i></i></div>
+  <div class="start-marker"><b>10.00s</b><span>first adjusted video frame</span></div>
+  <div class="start-media"><i></i><i></i><i></i><span>media timeline</span></div>
+</div>
+
+```swift
+private let startTimeOffset = CMTime(value: 10, timescale: 1)
+writer.initialSegmentStartTime = startTimeOffset
+```
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+個人アプリのHLS Writerも初期segmentの開始を10秒へ設定します。
+Capture PTSの補正は、この指定と入力CMSampleBufferを一致させるために必要でした。
+-->
+
+---
+
 <div class="kicker">PTS = CMSAMPLEBUFFER TIMESTAMP</div>
 
 # CMSampleBufferの撮影時刻を、Writerの開始時刻へ移す
@@ -1104,6 +1465,34 @@ class: formula-slide
 <!--
 補正はレート変更ではなく、全CMSampleBufferへの平行移動です。
 最初のvideo PTSからdeltaを一度だけ決め、その後は映像と音声へ同じ値を足します。
+-->
+
+---
+
+<div class="kicker">COPY TIMING</div>
+
+# 映像・音声は変えず、時刻情報だけを補正
+
+```swift {3-8}
+let timingInfos = try sampleTimingInfos().map { info in
+    var adjusted = info
+    adjusted.presentationTimeStamp =
+        info.presentationTimeStamp + offset
+    if info.decodeTimeStamp.isValid {
+        adjusted.decodeTimeStamp = info.decodeTimeStamp + offset
+    }
+    return adjusted
+}
+let copied = try CMSampleBuffer(copying: self, withNewTiming: timingInfos)
+```
+
+<div class="code-caption">PTSと、有効なDTS（decode timestamp）を同じ量だけ動かす</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+CMSampleBufferの映像・音声データはそのままに、timing infoを差し替えたコピーを作ります。
+PTSだけでなく、frameをdecodeする順番の時刻であるDTSも、有効な場合は同じ量だけ補正します。
 -->
 
 ---
@@ -1203,13 +1592,54 @@ HLSのvideo segmentは、途中のframeを参照せず単独でデコードを�
 この例では1本目が2.03秒、次が1.97秒です。常に2.0秒固定とは限りません。
 playlistのEXTINFには設定値の2秒ではなく、AVAssetSegmentReportが返すvideo trackの実durationを書きます。
 サンプルではreportが取得できない、またはdurationが無効な場合だけ設定値の2秒へfallbackします。
-次のページでは、希望位置の近くにIDRを用意するためのencoder設定を見ます。
+次にplaylistへ書く実durationを確認し、その後で希望位置の近くにIDRを用意するencoder設定を見ます。
 
 [Sources]
 - Apple: AVAssetWriter.preferredOutputSegmentInterval
 - Apple HLS Authoring Specification for Apple Devices
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLS/HLSManifest.swift
+-->
+
+---
+
+<div class="kicker">PUBLIC SAMPLE · SEGMENT DURATION</div>
+
+# 実測durationを使い、取れなければ2秒
+
+<div class="duration-compare">
+  <div class="duration-side sample">
+    <span>REPORT</span>
+    <b>video track duration</b>
+    <small>EXTINFへ実際の長さ。とくに最後のsegmentは2秒にならないので必要</small>
+  </div>
+  <div class="duration-side production">
+    <span>FALLBACK</span>
+    <b>config.segmentSeconds</b>
+    <small>無効・未取得なら2.0</small>
+  </div>
+</div>
+
+```swift
+let duration = report?.trackReports
+    .first { $0.mediaType == .video }?
+    .duration.seconds
+
+guard let duration, duration.isFinite, duration > 0 else {
+    return config.segmentSeconds
+}
+return duration
+```
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+公開サンプルはAVAssetSegmentReportのvideo track durationをplaylistへ渡します。
+reportがない、無効、0以下の場合だけ設定値の2秒へ戻します。frame reorderingは無効なので、このサンプルではvideo reportを採用しています。
+現在の個人アプリ実装はまだfragmentSecondsの2.0固定なので、同じ取り込み方を適用できる改善点です。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
 ---
@@ -1317,6 +1747,32 @@ S3はファイルをobjectとして保存するサービス、CloudFrontはそ�
 
 ---
 
+<div class="kicker">SERVER · ATOMIC REPLACE</div>
+
+# PUT中のファイルを、Viewerへ見せない
+
+<div class="atomic-replace">
+  <div><b>1 temporary file</b><span>request bodyを書き込む</span></div>
+  <i>→</i>
+  <div><b>2 flush + fsync</b><span>長さまで書き切る</span></div>
+  <i>→</i>
+  <div class="hot"><b>3 os.replace</b><span>完成品へ一気に置換</span></div>
+</div>
+
+<div class="bottom-claim">playlistの途中状態や、半分だけのm4sをGETさせない</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+Macサーバーはrequest bodyをdestinationへ直接書きません。
+同じdirectoryの一時ファイルへ書き切り、fsyncした後にos.replaceします。Viewerには古い完成品か新しい完成品だけが見えます。
+
+[Sources]
+- iosdc2026HLSSample/server/server.py
+-->
+
+---
+
 <div class="kicker">VISIBLE OUTPUT</div>
 
 # 再生開始は、init保存と最初のsegment公開の後
@@ -1404,6 +1860,39 @@ MomentNowではpresign API、S3 PUT、commit API、CloudFrontが担当します�
 
 ---
 
+<div class="kicker">S3 PRESIGNED PUT URL</div>
+
+# サーバーが、S3へPUTするための<br>署名付きURLを発行する
+
+<div class="choice-compare">
+  <div class="choice muted"><span>DO NOT</span><b>AWS credentialを内包</b><small>漏えい範囲が広い</small></div>
+  <div class="choice-arrow">→</div>
+  <div class="choice selected"><span>PRESIGNED URL</span><b>S3へ1ファイルだけPUT</b><small>保存先 / 有効期限を署名</small></div>
+</div>
+
+<div class="bottom-claim">iPhoneは発行されたURLへDataをPUTするだけ。AWS credentialは持たない</div>
+
+```swift
+var request = URLRequest(url: presignedURL)
+request.httpMethod = "PUT"
+request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+request.httpBody = data
+```
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+iOSアプリはS3のcredentialを持ちません。
+認証済みAPIが、S3の特定ファイルへPUTするためのpresigned URLを発行します。
+URLには保存先と有効期限が署名されているため、アプリへAWS credentialを配布する必要がありません。
+
+[Sources]
+- https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html
+- MomentNow-Lambda/src/presign.ts
+-->
+
+---
+
 <div class="kicker">INIT ONCE · MEDIA REPEATS</div>
 
 # initは1回、mediaは約2秒ごとに同じ順序で公開
@@ -1468,6 +1957,88 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+-->
+
+---
+
+<div class="kicker">PUBLIC SAMPLE · RETRY POLICY</div>
+
+# サンプルは、同じobjectを<br>最大3回まで再送する
+
+<div class="retry-steps">
+  <div><b>attempt 1</b><span>失敗</span><small>250 ms</small></div>
+  <i>→</i>
+  <div><b>attempt 2</b><span>失敗</span><small>500 ms</small></div>
+  <i>→</i>
+  <div><b>attempt 3</b><span>成功 / error</span><small>終了</small></div>
+</div>
+
+<div class="bottom-claim warning">segment PUTが失敗したら、そのsegmentをplaylistへ載せない</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+サンプルアプリは各PUTを最大3回試します。
+segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publisherのerrorとして残します。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSampleTests/HLSStreamPublisherTests.swift
+-->
+
+---
+
+<div class="kicker">OUT-OF-ORDER RACE</div>
+
+# upload完了順と、再生順は一致しないことがある
+
+<div class="race-lanes">
+  <div class="race-row"><b>seg 1</b><span class="race-bar slow">upload 1</span><em>commit 1</em></div>
+  <div class="race-row"><b>seg 2</b><span class="race-bar fast">upload 2</span><em class="early">commit 2</em></div>
+  <div class="race-row"><b>seg 3</b><span class="race-bar medium">upload 3</span><em>commit 3</em></div>
+</div>
+
+<div class="order-equation">
+  <span>completion</span><code>2, 1, 3</code><b>≠</b><span>playback</span><code>1, 2, 3</code>
+</div>
+
+<div class="bottom-claim warning">連続したseqまでだけを公開する「公開済み境界」が安全</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+upload処理は待機中に完了順が入れ替わる可能性があります。
+iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをseq順へ並べ直しますが、欠番を待つ契約ではありません。
+より安全にするなら、サーバーが連続したseqまでの「公開済み境界」を管理します。
+
+[Sources]
+- MomentNow-Lambda/src/commit.ts
+-->
+
+---
+
+<div class="kicker">SERVER · OBJECT SEMANTICS</div>
+
+# cache方針は、playlistとsegmentで分ける
+
+<div class="cache-table server-cache-table">
+  <div class="cache-head"><span>OBJECT</span><span>CACHE</span><span>HTTP</span></div>
+  <div class="dynamic"><b>playlist.m3u8</b><span>no-store / no-cache</span><code>毎回最新を取得</code></div>
+  <div class="immutable"><b>init.mp4 / m4s</b><span>max-age=31536000</span><code>Range / 206対応</code></div>
+</div>
+
+<div class="bottom-claim compact">S3 / CloudFrontでの設定</div>
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+playlistは同じURLの内容が増えるためキャッシュさせません。
+initとm4sは一度置いたら変えず長期cacheし、PlayerのRange requestには206で返します。個人アプリもobjectの可変性で方針を分けます。
+
+[Sources]
+- iosdc2026HLSSample/server/server.py
+- MomentNow-Lambda/src/create_stream.ts
+- MomentNow-Lambda/src/presign.ts
 -->
 
 ---
@@ -1559,6 +2130,35 @@ appendImmediatelyがthrowした場合はWriterの失敗としてstreamをerror�
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">STOP IN THE SAME CLOCK</div>
+
+# 開始と終了を、同じ補正後timelineで閉じる
+
+<div class="stop-flow">
+  <div><b>lastAdjustedPTS</b><span>最後にappendした時刻</span></div>
+  <i>→</i>
+  <div><b>endSession</b><span>media rangeを閉じる</span></div>
+  <i>→</i>
+  <div><b>markAsFinished</b><span>video / audio</span></div>
+  <i>→</i>
+  <div><b>finishWriting</b><span>最後のsegmentをflush</span></div>
+</div>
+
+```swift
+if lastAdjustedPTS.isValid {
+    writer.endSession(atSourceTime: lastAdjustedPTS)
+}
+```
+
+<!--
+[Optional detail: 時間が厳しい場合は省略]
+
+終了時刻も補正後のPTSを使います。
+finishWritingによって最後のsegmentがdelegateへ届く可能性があるため、stopはその完了まで待ちます。
 -->
 
 ---
@@ -1670,7 +2270,7 @@ Clock、Boundary、Upload、Finishの順序が揃って初めて、録画では�
 
 公開サンプルは、そのうちAVFoundationの生成処理を読みやすくした教材です。
 
-次のページで締めます。
+ここまでが本編です。次のページで締めます。
 -->
 
 ---
@@ -1688,582 +2288,4 @@ class: closing thanks-slide
 <!--
 ありがとうございました。
 サンプルアプリは、このURLで公開しています。
-
-本編はここで終了します。
--->
-
----
-layout: center
-class: chapter
----
-
-<div class="chapter-no">APPENDIX</div>
-<div class="chapter-rule"></div>
-
-# 時間が余ったとき／Q&A用
-<p>設定値・時刻補正・サーバー運用の詳細</p>
-
-<!--
-ここから先は本編では使用しません。
-ライブデモが難しい場合の静止画手順と、設定値、時刻補正、サーバー運用の詳細を参照します。
--->
-
----
-class: demo-step
----
-
-<div class="kicker">DEMO FALLBACK · 1 / 5</div>
-
-# Server は「PUTされたファイルを残すだけ」
-
-<div class="demo-command-layout">
-  <div class="terminal-card">
-    <span>Mac</span>
-    <code>$ python3 server/server.py</code>
-    <code class="muted-line">Viewer: http://localhost:8080</code>
-    <code class="muted-line">iPhone server URL: http://192.168.x.x:8080</code>
-  </div>
-  <div class="demo-contract-list">
-    <div><b>PUT</b><span>init.mp4 / m4s / m3u8</span></div>
-    <div><b>DISK</b><span>server/data/streams/...</span></div>
-    <div><b>GET</b><span>同じファイルをViewerへ返す</span></div>
-  </div>
-</div>
-
-<!--
-デモ用サーバーを起動します。
-ここには映像変換処理がありません。受け取ったHTTP bodyをファイルとして置き換え、GETで返すだけです。
-
-配信開始の前に接続確認を押します。
-HTTPHLSClientがhealth endpointへGETし、HTTP成功（2xx）なら接続済みにします。デモ中にURL誤りを早く見つけるための一手です。
-
-[Sources]
-- iosdc2026HLSSample/README.md
-- iosdc2026HLSSample/server/server.py
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HTTPHLSClient.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/ContentView.swift
--->
-
----
-class: demo-step
----
-
-<div class="kicker">DEMO FALLBACK · 2 / 5</div>
-
-# 「配信開始」で、iPhoneがHLS生成を始める
-
-<div class="tap-to-bytes">
-  <div class="tap-button">● 配信開始</div>
-  <i>→</i>
-  <div><b>Camera + Mic</b><span>video frame / audio block<br>（CMSampleBuffer）</span></div>
-  <i>→</i>
-  <div class="hot"><b>AVAssetWriter</b><span>圧縮してHLS用Dataへ分割</span></div>
-</div>
-
-<div class="demo-observe-line">
-  <span>elapsed <b>0.0 →</b></span>
-  <span>segment <b>0 →</b></span>
-</div>
-
-<!--
-配信開始を押します。
-Cameraから約1 frame、Micから短いaudio blockずつCMSampleBufferとして届きます。
-AVAssetWriterは映像・音声を圧縮し、ファイルURLではなくdelegateからfMP4のDataを返します。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
--->
-
----
-class: demo-step
----
-
-<div class="kicker">DEMO FALLBACK · 3 / 5</div>
-
-# 最初に届くのは、1回だけのinit.mp4
-
-<div class="object-arrival">
-  <div class="arrival-time"><b>t ≈ 0</b><span>initialization callback</span></div>
-  <i>→</i>
-  <div class="arrival-object init"><b>init.mp4</b><span>再生を始めるための設定</span></div>
-  <i>→</i>
-  <div class="arrival-path"><code>PUT /streams/{id}/init.mp4</code></div>
-</div>
-
-<div class="bottom-claim">media segmentより先に、再生の前提を保存する</div>
-
-<!--
-delegateの最初のcallbackはinitializationです。
-HLSStreamPublisherはinit.mp4の成功を覚え、これが済むまでmedia segmentを受け付けません。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
--->
-
----
-class: demo-step
----
-
-<div class="kicker">DEMO FALLBACK · 4 / 5</div>
-
-# 以後は約2秒ごとに、2つのPUTが続く
-
-<div class="put-sequence">
-  <div><span>segment 1</span><b>PUT 000001.m4s</b></div>
-  <i>→</i>
-  <div class="playlist-step"><span>公開</span><b>PUT playlist.m3u8</b></div>
-  <i>→</i>
-  <div><span>segment 2</span><b>PUT 000002.m4s</b></div>
-  <i>→</i>
-  <div class="playlist-step"><span>公開</span><b>PUT playlist.m3u8</b></div>
-</div>
-
-<div class="bottom-claim">playlistが指すのは、保存に成功したsegmentだけ</div>
-
-<!--
-約2秒ごとにmedia segmentができます。
-大事なのは、m4sをPUTしてからplaylistを置き換える順番です。Playerが404になる参照を先に公開しません。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
--->
-
----
-class: demo-step viewer-demo-step
----
-
-<div class="kicker">DEMO FALLBACK · 5 / 5</div>
-
-# Viewerは最新streamを見つけ、playlistを追いかける
-
-<div class="viewer-poll-flow">
-  <div><b>1秒ごと</b><code>GET /api/streams</code></div>
-  <i>→</i>
-  <div><b>最新を選択</b><code>playlistURL</code></div>
-  <i>→</i>
-  <div class="viewer-live"><b>LIVE</b><span>Safari / AVPlayer / hls.js</span></div>
-</div>
-
-<div class="demo-observe-line">
-  <span>STREAM <b>stream-...</b></span>
-  <span>SEGMENTS <b>1 → 2 → 3</b></span>
-  <span>PLAYLIST <b>/streams/.../playlist.m3u8</b></span>
-</div>
-
-<!--
-MacのViewerは1秒ごとにstream一覧を取得し、更新時刻が最も新しい配信を選びます。
-SafariはネイティブHLS、それ以外は同梱したhls.jsで再生します。
-同じplaylist URLをiOSのAVPlayerへ渡し、WebとiOSの両方で再生を確認します。
-
-[Sources]
-- iosdc2026HLSSample/server/static/app.js
-- Apple: Using AVFoundation to play and persist HTTP live streams
--->
-
----
-
-<div class="kicker">APPENDIX · ONE CAPTURE, THREE OUTPUTS</div>
-
-# 1つのCaptureSessionを、3つの用途で使う
-
-<div class="capture-branches">
-  <div class="capture-branch-source"><span>Camera + Mic</span><b>CaptureSession</b></div>
-  <div class="capture-branch-lines"><i></i><i></i><i></i></div>
-  <div class="capture-branch-targets">
-    <div class="preview"><span>画面表示</span><b>PreviewLayer</b><small>配信中も表示</small></div>
-    <div class="hls"><span>ライブ配信</span><b>H.264 / AAC → fMP4</b><small>約2秒ごとにupload</small></div>
-    <div class="local"><span>ローカル保存</span><b>HEVC / AAC → MP4</b><small>MomentNowのみ · 1080 × 1920</small></div>
-  </div>
-</div>
-
-<div class="local-recording-result">
-  <span>recording.mp4</span><i>→</i><b>元動画としてupload</b><i>+</i><b>設定時は写真ライブラリへ保存</b>
-</div>
-
-<div class="bottom-claim">公開サンプルはPreview + HLS。MomentNowは保存用Writerも並行する</div>
-
-<!--
-PreviewはAVCaptureVideoPreviewLayerへ同じCaptureSessionを接続するため、配信中も画面表示を続けられます。
-MomentNowでは同じ元のCMSampleBufferを、HLS用とローカルMP4用の2つのAVAssetWriterへ分岐します。
-停止時に両Writerをfinishし、ローカルMP4は元動画として別途uploadします。設定が有効なら写真ライブラリへも保存します。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/CameraPreviewView.swift
-- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamView.swift
-- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
-- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamViewModel.swift
--->
-
----
-
-<div class="kicker">APPENDIX · S3 PRESIGNED PUT URL</div>
-
-# サーバーが、S3へPUTするための<br>署名付きURLを発行する
-
-<div class="choice-compare">
-  <div class="choice muted"><span>DO NOT</span><b>AWS credentialを内包</b><small>漏えい範囲が広い</small></div>
-  <div class="choice-arrow">→</div>
-  <div class="choice selected"><span>PRESIGNED URL</span><b>S3へ1ファイルだけPUT</b><small>保存先 / 有効期限を署名</small></div>
-</div>
-
-<div class="bottom-claim">iPhoneは発行されたURLへDataをPUTするだけ。AWS credentialは持たない</div>
-
-```swift
-var request = URLRequest(url: presignedURL)
-request.httpMethod = "PUT"
-request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-request.httpBody = data
-```
-
-<!--
-iOSアプリはS3のcredentialを持ちません。
-認証済みAPIが、S3の特定ファイルへPUTするためのpresigned URLを発行します。
-URLには保存先と有効期限が署名されているため、アプリへAWS credentialを配布する必要がありません。
-
-[Sources]
-- https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html
-- MomentNow-Lambda/src/presign.ts
--->
-
----
-
-<div class="kicker">APPENDIX · OUT-OF-ORDER RACE</div>
-
-# upload完了順と、再生順は一致しないことがある
-
-<div class="race-lanes">
-  <div class="race-row"><b>seg 1</b><span class="race-bar slow">upload 1</span><em>commit 1</em></div>
-  <div class="race-row"><b>seg 2</b><span class="race-bar fast">upload 2</span><em class="early">commit 2</em></div>
-  <div class="race-row"><b>seg 3</b><span class="race-bar medium">upload 3</span><em>commit 3</em></div>
-</div>
-
-<div class="order-equation">
-  <span>completion</span><code>2, 1, 3</code><b>≠</b><span>playback</span><code>1, 2, 3</code>
-</div>
-
-<div class="bottom-claim warning">連続したseqまでだけを公開する「公開済み境界」が安全</div>
-
-<!--
-upload処理は待機中に完了順が入れ替わる可能性があります。
-iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをseq順へ並べ直しますが、欠番を待つ契約ではありません。
-より安全にするなら、サーバーが連続したseqまでの「公開済み境界」を管理します。
-
-[Sources]
-- MomentNow-Lambda/src/commit.ts
--->
-
----
-
-<div class="kicker">CONFIG</div>
-
-# 上り回線に合わせて、配信品質を選ぶ
-
-```swift
-let profile: (CGSize, Int) = switch quality {
-case .high:   (.init(width: 720, height: 1280), 2_500_000)
-case .medium: (.init(width: 720, height: 1280), 1_500_000)
-case .low:    (.init(width: 480, height: 854),    900_000)
-}
-```
-
-<div class="config-rail">
-  <div><b>NWPath</b><span>constrained / expensive</span></div>
-  <div><b>presign</b><span>API latency</span></div>
-  <div><b>probe PUT</b><span>upload throughput</span></div>
-  <div><b>2.0 sec</b><span>segment target</span></div>
-</div>
-
-<div class="source">LiveSegmentRecorder.Config.resolved / AutoStreamingQualityResolver</div>
-
-<!--
-個人アプリではNWPathと小さなprobe PUTから、high、medium、lowの1品質を配信開始前に選びます。
-途中でrenditionを切り替えるABRではなく、端末の上り回線に合わせた開始時の選択です。
--->
-
----
-
-<div class="kicker">AUDIO SESSION</div>
-
-# カメラ構成前に、録音用AudioSessionを有効化
-
-```swift
-let audio = AVAudioSession.sharedInstance()
-try audio.setCategory(
-    .playAndRecord,
-    mode: .videoRecording,
-    options: [.defaultToSpeaker, .allowBluetoothHFP]
-)
-try audio.setActive(true)
-```
-
-<div class="contract-compare">
-  <div><span>Capture</span><b>camera + microphone</b></div>
-  <div><span>Route</span><b>speaker + Bluetooth HFP</b></div>
-</div>
-
-<!--
-録音権限だけではなく、AVAudioSessionのcategoryとmodeを先に設定します。
-Bluetooth HFPを含む入力routeを許可しつつ、端末側の再生はspeakerを既定にしています。
--->
-
----
-
-<div class="kicker">ORIENTATION</div>
-
-# 縦向きは、video connectionへ90度を指定
-
-<div class="orientation-visual">
-  <div class="landscape-frame">1280 × 720</div>
-  <div class="rotate-arrow">↻ <span>90°</span></div>
-  <div class="portrait-frame">720 × 1280</div>
-</div>
-
-```swift
-if let connection = videoOutput.connection(with: .video),
-   connection.isVideoRotationAngleSupported(90) {
-    connection.videoRotationAngle = 90
-}
-```
-
-<!--
-出力サイズはportraitで指定し、video connectionへ90度のrotation angleを設定します。
-配信中の向き変更は扱わず、portrait 90度で固定します。
--->
-
----
-
-<div class="kicker">COPY TIMING</div>
-
-# 映像・音声は変えず、時刻情報だけを補正
-
-```swift {3-8}
-let timingInfos = try sampleTimingInfos().map { info in
-    var adjusted = info
-    adjusted.presentationTimeStamp =
-        info.presentationTimeStamp + offset
-    if info.decodeTimeStamp.isValid {
-        adjusted.decodeTimeStamp = info.decodeTimeStamp + offset
-    }
-    return adjusted
-}
-let copied = try CMSampleBuffer(copying: self, withNewTiming: timingInfos)
-```
-
-<div class="code-caption">PTSと、有効なDTS（decode timestamp）を同じ量だけ動かす</div>
-
-<!--
-CMSampleBufferの映像・音声データはそのままに、timing infoを差し替えたコピーを作ります。
-PTSだけでなく、frameをdecodeする順番の時刻であるDTSも、有効な場合は同じ量だけ補正します。
--->
-
----
-
-<div class="kicker">STOP IN THE SAME CLOCK</div>
-
-# 開始と終了を、同じ補正後timelineで閉じる
-
-<div class="stop-flow">
-  <div><b>lastAdjustedPTS</b><span>最後にappendした時刻</span></div>
-  <i>→</i>
-  <div><b>endSession</b><span>media rangeを閉じる</span></div>
-  <i>→</i>
-  <div><b>markAsFinished</b><span>video / audio</span></div>
-  <i>→</i>
-  <div><b>finishWriting</b><span>最後のsegmentをflush</span></div>
-</div>
-
-```swift
-if lastAdjustedPTS.isValid {
-    writer.endSession(atSourceTime: lastAdjustedPTS)
-}
-```
-
-<!--
-終了時刻も補正後のPTSを使います。
-finishWritingによって最後のsegmentがdelegateへ届く可能性があるため、stopはその完了まで待ちます。
--->
-
----
-
-<div class="kicker">INITIAL START TIME</div>
-
-# Writerの最初のsegmentは、10秒起点に固定
-
-<div class="start-time-visual">
-  <div class="start-empty"><span>0</span><i></i><i></i><i></i><i></i></div>
-  <div class="start-marker"><b>10.00s</b><span>first adjusted video frame</span></div>
-  <div class="start-media"><i></i><i></i><i></i><span>media timeline</span></div>
-</div>
-
-```swift
-private let startTimeOffset = CMTime(value: 10, timescale: 1)
-writer.initialSegmentStartTime = startTimeOffset
-```
-
-<!--
-個人アプリのHLS Writerも初期segmentの開始を10秒へ設定します。
-Capture PTSの補正は、この指定と入力CMSampleBufferを一致させるために必要でした。
--->
-
----
-
-<div class="kicker">VIDEO SETTINGS</div>
-
-# 配信用videoフォーマットは、互換性と上り帯域を優先する
-
-<div class="settings-table">
-  <div class="settings-head"><span>KEY</span><span>VALUE</span><span>INTENT</span></div>
-  <div><code>AVVideoCodecKey</code><b>H.264</b><span>広い再生互換性</span></div>
-  <div><code>Width / Height</code><b>480p / 720p</b><span>quality別に選択</span></div>
-  <div><code>AverageBitRate</code><b>0.9–2.5 Mbps</b><span>上り回線へ追従</span></div>
-  <div><code>ProfileLevel</code><b>High Auto</b><span>encoder profile</span></div>
-  <div><code>FrameReordering</code><b>false</b><span>decode順を単純化</span></div>
-</div>
-
-<div class="source">LiveSegmentRecorder.makeHLSVideoSettings()</div>
-
-<!--
-個人アプリはH.264 portraitで、品質に応じて480pまたは720p、0.9から2.5Mbpsを選びます。
-端末保存品質ではなく、ネットワークへ継続的に送れる配信品質として設定します。
--->
-
----
-
-<div class="kicker">AUDIO SETTINGS</div>
-
-# AudioはAAC mono、品質別に48–96kbps
-
-<div class="audio-spec">
-  <div><span>FORMAT</span><b>AAC</b></div>
-  <div><span>CHANNEL</span><b>mono</b></div>
-  <div><span>SAMPLE RATE</span><b>44.1 kHz</b></div>
-  <div><span>BITRATE</span><b>48–96 kbps</b></div>
-</div>
-
-```swift
-[
-    AVFormatIDKey: kAudioFormatMPEG4AAC,
-    AVNumberOfChannelsKey: 1,
-    AVSampleRateKey: 44_100,
-    AVEncoderBitRateKey: config.audioBitrate
-]
-```
-
-<!--
-音声はAAC、mono、44.1kHzで、low 48、medium 64、high 96kbpsです。
-家族向けの短い映像という用途に合わせ、stereoより送信量を優先しています。
--->
-
----
-
-<div class="kicker">PUBLIC SAMPLE · SEGMENT DURATION</div>
-
-# 実測durationを使い、取れなければ2秒
-
-<div class="duration-compare">
-  <div class="duration-side sample">
-    <span>REPORT</span>
-    <b>video track duration</b>
-    <small>EXTINFへ実際の長さ。とくに最後のsegmentは2秒にならないので必要</small>
-  </div>
-  <div class="duration-side production">
-    <span>FALLBACK</span>
-    <b>config.segmentSeconds</b>
-    <small>無効・未取得なら2.0</small>
-  </div>
-</div>
-
-```swift
-let duration = report?.trackReports
-    .first { $0.mediaType == .video }?
-    .duration.seconds
-
-guard let duration, duration.isFinite, duration > 0 else {
-    return config.segmentSeconds
-}
-return duration
-```
-
-<!--
-公開サンプルはAVAssetSegmentReportのvideo track durationをplaylistへ渡します。
-reportがない、無効、0以下の場合だけ設定値の2秒へ戻します。frame reorderingは無効なので、このサンプルではvideo reportを採用しています。
-現在の個人アプリ実装はまだfragmentSecondsの2.0固定なので、同じ取り込み方を適用できる改善点です。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
--->
-
----
-
-<div class="kicker">PUBLIC SAMPLE · RETRY POLICY</div>
-
-# サンプルは、同じobjectを<br>最大3回まで再送する
-
-<div class="retry-steps">
-  <div><b>attempt 1</b><span>失敗</span><small>250 ms</small></div>
-  <i>→</i>
-  <div><b>attempt 2</b><span>失敗</span><small>500 ms</small></div>
-  <i>→</i>
-  <div><b>attempt 3</b><span>成功 / error</span><small>終了</small></div>
-</div>
-
-<div class="bottom-claim warning">segment PUTが失敗したら、そのsegmentをplaylistへ載せない</div>
-
-<!--
-サンプルアプリは各PUTを最大3回試します。
-segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publisherのerrorとして残します。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSampleTests/HLSStreamPublisherTests.swift
--->
-
----
-
-<div class="kicker">SERVER · ATOMIC REPLACE</div>
-
-# PUT中のファイルを、Viewerへ見せない
-
-<div class="atomic-replace">
-  <div><b>1 temporary file</b><span>request bodyを書き込む</span></div>
-  <i>→</i>
-  <div><b>2 flush + fsync</b><span>長さまで書き切る</span></div>
-  <i>→</i>
-  <div class="hot"><b>3 os.replace</b><span>完成品へ一気に置換</span></div>
-</div>
-
-<div class="bottom-claim">playlistの途中状態や、半分だけのm4sをGETさせない</div>
-
-<!--
-Macサーバーはrequest bodyをdestinationへ直接書きません。
-同じdirectoryの一時ファイルへ書き切り、fsyncした後にos.replaceします。Viewerには古い完成品か新しい完成品だけが見えます。
-
-[Sources]
-- iosdc2026HLSSample/server/server.py
--->
-
----
-
-<div class="kicker">SERVER · OBJECT SEMANTICS</div>
-
-# cache方針は、playlistとsegmentで分ける
-
-<div class="cache-table server-cache-table">
-  <div class="cache-head"><span>OBJECT</span><span>CACHE</span><span>HTTP</span></div>
-  <div class="dynamic"><b>playlist.m3u8</b><span>no-store / no-cache</span><code>毎回最新を取得</code></div>
-  <div class="immutable"><b>init.mp4 / m4s</b><span>max-age=31536000</span><code>Range / 206対応</code></div>
-</div>
-
-<div class="bottom-claim compact">S3 / CloudFrontでの設定</div>
-
-<!--
-playlistは同じURLの内容が増えるためキャッシュさせません。
-initとm4sは一度置いたら変えず長期cacheし、PlayerのRange requestには206で返します。個人アプリもobjectの可変性で方針を分けます。
-
-[Sources]
-- iosdc2026HLSSample/server/server.py
-- MomentNow-Lambda/src/create_stream.ts
-- MomentNow-Lambda/src/presign.ts
 -->
