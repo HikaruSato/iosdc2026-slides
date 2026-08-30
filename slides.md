@@ -106,7 +106,7 @@ class: chapter
 <div class="chapter-no">01</div>
 <div class="chapter-rule"></div>
 
-# まず、HLSで<br>「ライブ」になる仕組み
+# HLSで「ライブ」になる仕組み
 <p>短い動画ファイル + 更新され続けるplaylist</p>
 
 <!--
