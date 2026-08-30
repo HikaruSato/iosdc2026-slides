@@ -1180,7 +1180,7 @@ class: chapter
   <div class="capture-branch-targets">
     <div class="preview"><span>画面表示</span><b>PreviewLayer</b><small>配信中もそのまま表示</small></div>
     <div class="hls"><span>ライブ配信</span><b>H.264 / AAC → fMP4</b><small>約2秒ごとにupload</small></div>
-    <div class="local"><span>MomentNowのみ</span><b>HEVC / AAC → MP4</b><small>1080 × 1920 · 停止時にfinish</small></div>
+    <div class="local"><span>ローカル保存(個人アプリのみ)</span><b>HEVC / AAC → MP4</b><small>1080 × 1920 · 停止時にfinish</small></div>
   </div>
 </div>
 
