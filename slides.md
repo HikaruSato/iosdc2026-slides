@@ -1,6 +1,6 @@
 ---
 theme: default
-title: 映像変換サーバーなしでiPhone端末内でHLSを生成してライブ配信
+title: 映像変換サーバーなしで端末内でHLSを生成してライブ配信
 info: |
   iOSDC Japan 2026 レギュラートーク（40分）
 author: Hikaru Sato
