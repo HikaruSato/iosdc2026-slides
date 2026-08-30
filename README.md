@@ -1,12 +1,14 @@
 # iOSDC Japan 2026 slides
 
 「映像変換サーバーなしでiPhone端末内でHLSを生成してライブ配信」の発表スライドです。
-本編63枚、付録13枚の全76枚で、40分想定です。最初に、撮影後のアップロードを待たずにURLで共有したいという動機と、
+本編52枚、付録21枚の全73枚で、40分想定です。最初に、撮影後のアップロードを待たずにURLで共有したいという動機と、
 Apple公式サンプルをきっかけにiPhone内でHLSを生成できた経緯を説明します。続いて、短い動画ファイルと更新されるplaylistによって
 HLSがライブ配信になる仕組みを説明し、その全体像へ今回の構成を当てはめたあと、`../iosdc2026HLSSample` を使い、
 iPhoneでHLSを生成してMacのHTTPサーバーへPUTし、保存された `init.mp4`、`.m4s`、
-`playlist.m3u8` をViewerで追従再生するデモを行います。その後、`../../MomentNow-iOS` のiOS実装を掘り下げ、
-ローカルのファイル保存をS3・presigned PUT・commit・CloudFrontへ置き換えた本番構成まで説明します。
+`playlist.m3u8` をViewerで追従再生するデモを行います。その後、`AVCaptureSession`、DataOutput、
+`AVAssetWriter`、SampleBufferReceiver、Writer delegateをどう接続するとHLS用Dataを取り出せるかを、
+時刻補正と約2秒のfragment生成を含めて順番に説明します。最後に、保存できたsegmentだけをplaylistへ公開する順序と、
+公開サンプルのMac保存をMomentNowのS3・署名付きURL・commit・CloudFrontへ置き換えた構成を扱います。
 
 ## Commands
 
