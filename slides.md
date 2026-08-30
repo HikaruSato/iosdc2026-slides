@@ -86,7 +86,7 @@ class: speaker-intro
 
 <div class="chapter-overview">
   <div><b>01</b><span>HLSがライブになる仕組み</span></div>
-  <div><b>02</b><span>生成と公開を分ける</span></div>
+  <div><b>02</b><span>端末内でHLSを生成</span></div>
   <div><b>03</b><span>映像と音声の時間軸調整</span></div>
   <div><b>04</b><span>約2秒のfMP4を生成</span></div>
   <div><b>05</b><span>playlistの更新</span></div>
@@ -727,7 +727,7 @@ AVAssetWriterDelegateは、この単位のDataを返してくれます。
   </div>
 </div>
 
-<div class="source">AVAssetWriterDelegate / LiveHLSStreamer / HLSUploadCoordinator</div>
+<div class="source">AVAssetWriterDelegate / HLSSegmentRecorder / HLSStreamPublisher</div>
 
 <!--
 この責任分界が今日の中心です。
@@ -743,27 +743,371 @@ class: chapter
 <div class="chapter-no">02</div>
 <div class="chapter-rule"></div>
 
-# 生成はcallback、<br>公開はTaskへ分ける
-<p>AVFoundation callback → HLSFragment → AsyncThrowingStream → Publisher actor</p>
+# Camera / Micから、<br>fMP4 Dataを取り出す
+<p>AVCaptureSession → DataOutput → SampleBufferReceiver → AVAssetWriterDelegate</p>
 
 <!--
 [Timing checkpoint: 13:30]
 
-ここから、端末内の処理を「同期callbackで生成する側」と「非同期Taskで公開する側」に分けます。
-型名ではなく、メディア処理がネットワーク待ちに巻き込まれない境界を先に捉えます。
+ここから公開サンプルのHLSSegmentRecorderへ入ります。
+標準SDKのobjectをどう接続すると、CameraとMicからfMP4 Dataを取り出せるのかを順番に見ます。
+-->
+
+---
+
+<div class="kicker">HLSSegmentRecorder · SIX SDK OBJECTS</div>
+
+# 6つのSDK objectを、2つのdelegateで接続
+
+<div class="recorder-object-map">
+  <div class="recorder-object-group capture">
+    <span>CAPTURE</span>
+    <b>AVCaptureSession</b>
+    <div><code>AVCaptureVideoDataOutput</code><code>AVCaptureAudioDataOutput</code></div>
+  </div>
+  <div class="recorder-object-arrow">
+    <code>captureOutput</code><i>→</i><small>CMSampleBuffer</small>
+  </div>
+  <div class="recorder-object-group writer">
+    <span>WRITE</span>
+    <div><code>videoReceiver</code><code>audioReceiver</code></div>
+    <b>AVAssetWriter</b>
+  </div>
+  <div class="recorder-object-arrow">
+    <code>writer delegate</code><i>→</i><small>segment Data</small>
+  </div>
+  <div class="recorder-object-output">
+    <span>RECORDER OUTPUT</span>
+    <b>HLSFragment</b>
+    <small>initialization / media</small>
+  </div>
+</div>
+
+<div class="bottom-claim">左から右へ、撮影データを「HLSとして保存できるData」へ変える</div>
+
+<!--
+HLSSegmentRecorderは、CameraやMicを直接エンコードする巨大なAPIではありません。
+Capture側の3 objectとWriter側の3 objectを、2種類のdelegate callbackでつないでいます。
+
+左ではCaptureSessionがDataOutputへCMSampleBufferを流します。
+中央ではReceiverからWriterへそのbufferを渡します。
+右ではWriter delegateからfMP4のDataを受け取ります。
+-->
+
+---
+
+<div class="kicker">CAPTURE TOPOLOGY</div>
+
+# CaptureSessionが、Camera / MicをDataOutputへつなぐ
+
+<div class="capture-topology">
+  <div class="device-column">
+    <div class="device-node"><b>Back camera</b><span>AVCaptureDeviceInput</span></div>
+    <div class="device-node"><b>Microphone</b><span>AVCaptureDeviceInput</span></div>
+  </div>
+  <div class="session-bus">
+    <span>AVCaptureSession</span>
+    <i></i>
+  </div>
+  <div class="output-column">
+    <div class="output-node"><b>VideoDataOutput</b><span>video CMSampleBuffer</span></div>
+    <div class="output-node"><b>AudioDataOutput</b><span>audio CMSampleBuffer</span></div>
+  </div>
+</div>
+
+<div class="bottom-claim">完成した録画ファイルではなく、撮影中のframe / audio blockを受け取る</div>
+
+<!--
+CaptureSessionへ背面CameraとMicをDeviceInputとして追加し、出口にはVideoDataOutputとAudioDataOutputを追加します。
+
+MovieFileOutputなら完成した録画ファイルを受け取れますが、ライブ中にWriterへ少しずつ渡せません。
+DataOutputを使うことで、videoは約1 frame、audioは短いblockごとのCMSampleBufferを撮影中から受け取れます。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">DATA OUTPUT DELEGATE</div>
+
+# delegateを設定すると、CMSampleBufferが届き始める
+
+<div class="delegate-setup-layout">
+
+```swift
+session.addOutput(videoOutput)
+session.addOutput(audioOutput)
+
+videoOutput.setSampleBufferDelegate(
+    self, queue: writingQueue
+)
+audioOutput.setSampleBufferDelegate(
+    self, queue: writingQueue
+)
+```
+
+<div class="delegate-callback-flow">
+  <div><b>VideoDataOutput</b><small>約1 frame</small></div>
+  <div><b>AudioDataOutput</b><small>短いaudio block</small></div>
+  <i>↓</i>
+  <code>serial writingQueue</code>
+  <i>↓</i>
+  <strong>captureOutput(_:didOutput:from:)</strong>
+</div>
+
+</div>
+
+<div class="bottom-claim">VideoとAudioを同じserial queueで受け取り、Writerの状態を1か所で更新する</div>
+
+<!--
+DataOutputへdelegateとcallback queueを設定すると、撮影のたびにcaptureOutputが呼ばれます。
+AppleのAPIはVideoのcallback queueにserial queueを要求し、frameの到着順を保証します。
+
+公開サンプルはVideoとAudioへ同じwritingQueueを指定します。
+そのため、Writerの開始、時刻補正、appendを同じserial queue上で順番に処理できます。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutput/setsamplebufferdelegate(_:queue:)
+- https://developer.apple.com/documentation/avfoundation/avcaptureaudiodataoutput/setsamplebufferdelegate(_:queue:)
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">URL-LESS HLS WRITER</div>
+
+# HLS用Writer
+
+<div class="writer-setup-layout">
+
+```swift
+let writer = AVAssetWriter(
+    contentType: .mpeg4Movie
+)
+writer.outputFileTypeProfile = .mpeg4AppleHLS
+writer.preferredOutputSegmentInterval = .init(
+    seconds: 2, preferredTimescale: 600
+)
+writer.initialSegmentStartTime = startTimeOffset
+writer.delegate = self
+```
+
+<div class="writer-segment-output">
+  <div class="writer-shape"><b>AVAssetWriter</b><span>HLS profile · URLなし</span></div>
+  <i>→ delegate →</i>
+  <div class="writer-data-stack"><span>initialization Data</span><span>separable Data</span></div>
+</div>
+
+</div>
+
+<div class="bottom-claim">Writer自身はファイルへ保存せず、生成したfMP4をDataで返す</div>
+
+<!--
+通常の録画では出力先URLを指定しますが、segment delegateを使う構成ではcontentTypeだけでWriterを作ります。
+Apple HLS profile、希望segment間隔、initial start time、delegateを設定します。
+
+このdelegate methodを実装すると通常のファイル書き込みは抑止され、Writerがsegment Dataをcallbackします。
+各propertyの意味と2秒境界はChapter 04で詳しく見ます。
+preferredTimescaleに 600 を指定した場合、1秒は 600/600 となり、1/600秒単位の細かい時間を表現できるようになります。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avassetwriter
+- https://developer.apple.com/documentation/avfoundation/avfiletypeprofile/mpeg4applehls
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">INPUT → RECEIVER → WRITER</div>
+
+# Receiverが、sampleの書き込み口になる
+
+<div class="receiver-setup-layout">
+
+```swift
+let videoInput = AVAssetWriterInput(
+    mediaType: .video,
+    outputSettings: videoSettings()
+)
+let audioInput = AVAssetWriterInput(
+    mediaType: .audio,
+    outputSettings: audioSettings()
+)
+
+self.videoReceiver = writer.inputReceiver(
+    for: videoInput
+)
+self.audioReceiver = writer.inputReceiver(
+    for: audioInput
+)
+```
+
+<div class="receiver-connection">
+  <div class="receiver-row video"><span>video CMSampleBuffer</span><b>videoReceiver</b><code>H.264 Input</code></div>
+  <div class="receiver-row audio"><span>audio CMSampleBuffer</span><b>audioReceiver</b><code>AAC Input</code></div>
+  <i>↓ attached to ↓</i>
+  <strong>AVAssetWriter</strong>
+</div>
+
+</div>
+
+<div class="bottom-claim">Inputがencode設定を持ち、ReceiverがCMSampleBufferの入口になる</div>
+
+<!--
+AVAssetWriterInputには、VideoならH.264、AudioならAACなどのencode設定を渡します。
+inputReceiver(for:)は、そのInputをWriterへ接続すると同時に、CMSampleBufferを書き込むReceiverを返します。
+
+Inputはsetup中のローカル変数で十分です。
+一方ReceiverはcaptureOutputが呼ばれるたびに使うため、HLSSegmentRecorderのpropertyとして保持します。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avassetwriter
+- https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">CMSAMPLEBUFFER ≠ SEGMENT</div>
+
+# 多数のCMSampleBufferを、約2秒のsegmentへまとめる
+
+<div class="sample-to-segment-flow">
+  <div class="sample-flow-stack inputs">
+    <div class="sample-flow-node video"><span>Camera</span><b>video CMSampleBuffer</b><small>約1 frame · 30fpsなら約33ms</small></div>
+    <div class="sample-flow-node audio"><span>Microphone</span><b>audio CMSampleBuffer</b><small>短い音声block</small></div>
+  </div>
+  <div class="sample-flow-arrow">→</div>
+  <div class="sample-flow-writer"><span>AVAssetWriter</span><b>encode<br>+ interleave<br>+ segment</b></div>
+  <div class="sample-flow-arrow">→</div>
+  <div class="sample-flow-stack outputs">
+    <div class="sample-flow-node init"><span>1配信に1つ</span><b>initialization</b><small>codec · trackなどの再生設定</small></div>
+    <div class="sample-flow-node media"><span>約2秒ごと</span><b>separable</b><small>video frame + audio block本体</small></div>
+  </div>
+</div>
+
+<div class="sample-term-grid">
+  <div><b>video CMSampleBuffer</b><span>カメラから届く約1 frame分</span></div>
+  <div><b>audio CMSampleBuffer</b><span>マイクから届く短い音声block</span></div>
+  <div><b>separable Data</b><span>約2秒分の映像・音声本体</span></div>
+  <div><b>initialization Data</b><span>再生開始に必要な設定</span></div>
+</div>
+
+<!--
+CMSampleBufferはsegmentファイルではありません。Videoなら約1 frame分、Audioなら短い音声blockです。
+
+AVAssetWriterが多数のCMSampleBufferをH.264とAACへencodeし、2 trackを同じ時間軸でinterleaveして、約2秒分のfragmentへまとめます。
+30fpsなら1つのsegmentにおよそ60 frameが入ります。実際の境界はkeyframeにより前後します。
+
+最初にcodecやtrack設定を持つinitialization Dataが届き、その後に映像・音声本体を持つseparable Dataが繰り返し届きます。
+
+[Sources]
+- https://developer.apple.com/videos/play/wwdc2020/10011/
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">CAPTURE CALLBACK → RECEIVER</div>
+
+# 1回のcallbackで、1つのsampleをReceiverへ渡す
+
+<div class="append-pipeline">
+  <div><span>DataOutput delegate</span><b>captureOutput</b></div>
+  <i>→</i>
+  <div><span>Chapter 03</span><b>時刻を補正</b></div>
+  <i>→</i>
+  <div><span>CoreMedia</span><b>CMReadySampleBuffer</b></div>
+  <i>→</i>
+  <div class="primary"><span>SampleBufferReceiver</span><b>appendImmediately</b></div>
+</div>
+
+```swift
+let readySampleBuffer = CMReadySampleBuffer(
+    unsafeBuffer: transferableSampleBuffer
+)
+let didAppend = try receiver.appendImmediately(readySampleBuffer)
+guard didAppend else { return }
+```
+
+<div class="append-outcomes">
+  <div class="success"><b>true</b><span>Writerへ渡せた</span></div>
+  <div class="warning"><b>false</b><span>待たずにdrop</span></div>
+  <div class="danger"><b>throw</b><span>streamをerror終了</span></div>
+</div>
+
+<!--
+captureOutputが呼ばれるたび、CMSampleBufferの時刻を補正し、CoreMediaの所有権を明示したCMReadySampleBufferへ変換します。
+その後、VideoまたはAudioのReceiverへappendImmediatelyします。
+
+appendImmediatelyは同期的に受け入れを試します。
+trueならappend成功、falseならWriterがまだ受け入れられないため、そのsampleを待たずに落とします。throwならWriter自体の失敗としてAsyncThrowingStreamをerrorで閉じます。
+待つappendではなくappendImmediatelyを選ぶ理由は、Camera callbackへ古いframeを貯めないためです。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">WRITER DELEGATE → FILE PATH</div>
+
+# WriterのDataを、Publisherが保存する
+
+<div class="fragment-routing">
+  <div class="fragment-route init">
+    <code>.initialization</code><i>→</i><b>HLSFragment.initialization</b><i>→</i><strong>init.mp4</strong>
+  </div>
+  <div class="fragment-route media">
+    <code>.separable</code><i>→</i><b>HLSFragment.media(seq, …)</b><i>→</i><strong>seg/000001.m4s</strong>
+  </div>
+</div>
+
+```swift
+switch segmentType {
+case .initialization:
+    continuation.yield(.initialization(segmentData))
+case .separable:
+    segmentIndex += 1
+    continuation.yield(.media(
+        sequence: segmentIndex,
+        data: segmentData,
+        duration: duration
+    ))
+}
+```
+
+<div class="bottom-claim">Recorderの出力はData。HTTPHLSClientが保存先のpathを組み立てる</div>
+
+<!--
+Writer delegateには、segmentDataとsegmentTypeが届きます。
+initializationは配信ごとに最初の1回、separableは約2秒ごとです。
+
+HLSSegmentRecorderはDataをHLSFragmentへ変換するところまでを担当します。
+この時点ではinit.mp4や000001.m4sというローカルファイルは作っていません。
+
+後段のHLSStreamPublisherがfragmentを受け取り、HTTPHLSClientがinitializationをinit.mp4、mediaをsequence付きのm4s pathへPUTします。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avassetwriterdelegate/assetwriter(_:didoutputsegmentdata:segmenttype:segmentreport:)
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HTTPHLSClient.swift
 -->
 
 ---
 
 <div class="kicker">SYNC CALLBACK → ASYNC TASK</div>
 
-# Writerを待たせず、生成したfragmentを非同期で公開する
+# 生成したDataだけを、公開Taskへ渡す
 
 <div class="async-boundary-flow">
   <div class="async-boundary-stage callback">
     <span>SYNC CALLBACK</span>
-    <b>Writerへ渡す</b>
-    <small>Camera / Mic → CMSampleBuffer</small>
+    <b>fMP4 Dataを生成</b>
+    <small>DataOutput → Receiver → Writer delegate</small>
     <code>writingQueue</code>
   </div>
   <i>→</i>
@@ -783,18 +1127,18 @@ class: chapter
 </div>
 
 <div class="async-boundary-types">HLSSegmentRecorder <i>→</i> HLSStreamPublisher</div>
-<div class="bottom-claim">メディア処理はネットワークを待たない。公開順はactorが守る</div>
+<div class="bottom-claim">callbackはDataを渡して戻る。HTTPの完了はPublisher Taskが待つ</div>
 
 <!--
-左側はAVFoundationとの同期callback境界です。
-VideoDataOutputとAudioDataOutputのsetSampleBufferDelegateには、CMSampleBufferを順番どおり受け取るserial callback queueを指定します。
-Writer delegateがfragment Dataを返したら、HLSSegmentRecorderはHLSFragmentとしてAsyncThrowingStreamへ渡し、callbackからすぐ戻ります。
+ここまで見たHLSSegmentRecorderの流れを、非同期境界としてまとめます。
+DataOutput callbackでReceiverへsampleを渡し、Writer delegateでfragment Dataを受け取ります。
+RecorderはそのDataをHLSFragmentとしてAsyncThrowingStreamへyieldし、callbackからすぐ戻ります。
 
 右側ではHLSStreamPublisherのTaskがstreamを消費し、HTTP PUTとplaylist更新をawaitします。
-Publisher actorが公開順、retry、playlist状態を直列化するため、メディア処理はネットワーク待ちに巻き込まれません。
+そのため、AVFoundation callbackはネットワークの応答を待ちません。公開順はPublisher actorが守ります。
 
 Recorderはstreamのcontinuationを準備してからWriterを有効にします。具体的な開始コードはAppendixへ移しました。
-次の章では左側のHLSSegmentRecorderへ入り、映像と音声の時刻をそろえる処理を見ます。
+次の章では、Receiverへ渡す直前に行っていた映像と音声の時刻補正を見ます。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
@@ -815,44 +1159,10 @@ class: chapter
 <p>Camera / Mic → CMSampleBuffer → one shared timeline</p>
 
 <!--
-[Timing checkpoint: 15:00]
+[Timing checkpoint: 18:30]
 
-ここからHLSSegmentRecorderを見ます。
-最初の難所はエンコード設定ではなく、映像と音声を同じ時間軸へ載せることです。
--->
-
----
-
-<div class="kicker">CAPTURE TOPOLOGY</div>
-
-# AVCaptureSessionが、2つのdeviceを2つのDataOutputへつなぐ
-
-<div class="capture-topology">
-  <div class="device-column">
-    <div class="device-node"><b>Back camera</b><span>AVCaptureDeviceInput</span></div>
-    <div class="device-node"><b>Microphone</b><span>AVCaptureDeviceInput</span></div>
-  </div>
-  <div class="session-bus">
-    <span>AVCaptureSession</span>
-    <i></i>
-  </div>
-  <div class="output-column">
-    <div class="output-node"><b>VideoDataOutput</b><span>CMSampleBuffer</span></div>
-    <div class="output-node"><b>AudioDataOutput</b><span>CMSampleBuffer</span></div>
-  </div>
-</div>
-
-<div class="source">HLSSegmentRecorder.setupCaptureSessionLocked()</div>
-
-<!--
-カメラとマイクの権限をViewModelで揃えてから、プレビューを起動します。
-権限の遷移をRecorderへ混ぜないことで、Recorderは許可済みの前提に集中できます。
-
-PreviewはCaptureSession、RecordingはAVAssetWriterのライフサイクルです。
-個人アプリではpreview準備とstreaming開始を分け、録画ボタンを押した時点でWriterとUploaderを動かします。
-
-CaptureSessionには背面カメラとマイクを追加し、出力はDataOutputにします。
-完成した動画ファイルではなく、フレームごとのCMSampleBufferを受け取るためです。
+生成パイプラインがつながったので、Receiverへ渡す直前の時刻補正を詳しく見ます。
+映像と音声を同じ時間軸へ載せることが、次の難所です。
 -->
 
 ---
@@ -894,78 +1204,6 @@ Local WriterはHEVC/AAC、1080×1920、5Mbpsの1本のMP4を一時領域へ作�
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamView.swift
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamViewModel.swift
--->
-
----
-
-<div class="kicker">WHY DATA OUTPUT</div>
-
-# 完成ファイルではなく、CMSampleBufferを使う
-
-<div class="choice-compare">
-  <div class="choice muted">
-    <span>MovieFileOutput</span>
-    <b>録画ファイルを作る</b>
-    <small>高レベルで便利</small>
-  </div>
-  <div class="choice-arrow">→</div>
-  <div class="choice selected">
-    <span>Video / Audio DataOutput</span>
-    <b>frame / audio blockを受け取る</b>
-    <small>Writerへ逐次append</small>
-  </div>
-</div>
-
-<div class="sample-buffer-band">
-  <span>video CMSampleBuffer</span>
-  <span>audio CMSampleBuffer</span>
-  <b>same writingQueue</b>
-</div>
-
-<!--
-MovieFileOutputではなくDataOutputを使うのは、AVAssetWriterへCMSampleBufferを逐次渡したいからです。
-映像と音声のdelegateを同じwritingQueueへ載せます。
--->
-
----
-
-<div class="kicker">CMSAMPLEBUFFER ≠ SEGMENT</div>
-
-# 多数のCMSampleBufferを、約2秒のsegmentへまとめる
-
-<div class="sample-to-segment-flow">
-  <div class="sample-flow-stack inputs">
-    <div class="sample-flow-node video"><span>Camera</span><b>video CMSampleBuffer</b><small>約1 frame · 30fpsなら約33ms</small></div>
-    <div class="sample-flow-node audio"><span>Microphone</span><b>audio CMSampleBuffer</b><small>短い音声block</small></div>
-  </div>
-  <div class="sample-flow-arrow">→</div>
-  <div class="sample-flow-writer"><span>AVAssetWriter</span><b>encode<br>+ segment</b></div>
-  <div class="sample-flow-arrow">→</div>
-  <div class="sample-flow-stack outputs">
-    <div class="sample-flow-node init"><span>1配信に1つ</span><b>init.mp4</b><small>codec · trackなどの再生設定</small></div>
-    <div class="sample-flow-node media"><span>約2秒ごと</span><b>000001.m4s</b><small>video frame + audio block本体</small></div>
-  </div>
-</div>
-
-<div class="sample-term-grid">
-  <div><b>video CMSampleBuffer</b><span>カメラから届く約1 frame分</span></div>
-  <div><b>audio CMSampleBuffer</b><span>マイクから届く短い音声block</span></div>
-  <div><b>media segment</b><span>約2秒分のvideo frame / audio block</span></div>
-  <div><b>initialization segment</b><span>再生開始に必要な設定</span></div>
-</div>
-
-<!--
-ここで扱うCMSampleBufferはファイルではありません。videoなら約1 frame分、audioなら短い音声blockです。
-
-AVAssetWriterが多数のCMSampleBufferをエンコードし、約2秒分ずつmedia segmentへまとめます。
-30fpsなら1つのsegmentにおよそ60 frameが入ります。実際の境界はkeyframeにより前後します。
-
-init.mp4は最初のvideo frameではなく、codecやtrackなどの再生設定を持つinitialization segmentです。
-最初のvideo frameを含む映像・音声本体は、最初のm4sへ入ります。
-
-[Sources]
-- Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
 ---
@@ -1036,7 +1274,7 @@ CMSampleBufferのdataがreadyでない場合も早期returnし、Writerの状態
 <div class="start-sequence">
   <div class="sequence-item audio"><span>audio CMSampleBuffer</span><small>まだappendしない</small></div>
   <div class="sequence-line"></div>
-  <div class="sequence-item video"><span>first video frame</span><small>startWriting</small></div>
+  <div class="sequence-item video"><span>first video frame</span><small>writer.start()</small></div>
   <div class="sequence-line active"></div>
   <div class="sequence-item session"><span>startSession(at: 10s)</span><small>video + audio共通</small></div>
 </div>
@@ -1130,37 +1368,6 @@ videoから決めたdeltaを両方へ適用し、同期を保ちます。
 -->
 
 ---
-
-<div class="kicker">APPEND READINESS</div>
-
-# Writerへ入らないCMSampleBufferは、待たずに落とす
-
-```swift
-if output === videoOutput {
-    guard videoInput.isReadyForMoreMediaData else { return }
-    didAppend = videoInput.append(adjustedSampleBuffer)
-} else {
-    guard audioInput.isReadyForMoreMediaData else { return }
-    didAppend = audioInput.append(adjustedSampleBuffer)
-}
-```
-
-<div class="readiness-rule">
-  <span>push source</span>
-  <b>×</b>
-  <span>real-time writer</span>
-  <b>→</b>
-  <span>bounded latency</span>
-</div>
-
-<div class="source">Apple: AVAssetWriterInput.isReadyForMoreMediaData</div>
-
-<!--
-DataOutputはpush型なので、Writer inputがreadyなときだけ直接appendします。
-readyでなければ待機queueを作らず、そのCMSampleBufferを落とします。品質よりリアルタイム性を優先する設計です。
--->
-
----
 layout: center
 class: chapter
 ---
@@ -1169,12 +1376,12 @@ class: chapter
 <div class="chapter-rule"></div>
 
 # 映像と音声を、<br>約2秒のfMP4へ分ける
-<p>Four HLS settings and a segment delegate</p>
+<p>Four HLS settings and segment boundaries</p>
 
 <!--
 [Timing checkpoint: 23:00]
 
-Captureの時計が揃ったので、次はAVAssetWriterの設定とdelegate出力を見ます。
+Captureの時計が揃ったので、次は約2秒のfragment境界を作るHLS固有設定を見ます。
 -->
 
 ---
@@ -1211,32 +1418,6 @@ Captureの時計が揃ったので、次はAVAssetWriterの設定とdelegate出�
 
 ---
 
-<div class="kicker">URL-LESS WRITER</div>
-
-# URLなしで、Dataをdelegateから受け取る
-
-```swift
-let writer = AVAssetWriter(contentType: .mpeg4Movie)
-writer.delegate = self
-```
-
-<div class="writer-output-model">
-  <div class="writer-shape"><b>AVAssetWriter</b><span>MP4 content type</span></div>
-  <div class="output-split">
-    <span>init.mp4<br><small>再生準備</small></span>
-    <span>media segment<br><small>約2秒のData</small></span>
-  </div>
-</div>
-
-<div class="source">Apple WWDC20 Session 10011 · URL-less fragmented MP4 output</div>
-
-<!--
-通常のAVAssetWriterと違い、ここでは出力URLを渡しません。
-HLS profileとdelegateを設定すると、初期化セグメントと分離可能なセグメントがDataで返ります。
--->
-
----
-
 <div class="kicker">HLS-SPECIFIC · FOUR KNOBS</div>
 
 # HLS出力は、4つのpropertyで有効になる
@@ -1248,7 +1429,7 @@ HLS profileとdelegateを設定すると、初期化セグメントと分離可�
   <div><b>04</b><code>delegate</code><span>生成されたDataの受け口</span></div>
 </div>
 
-<div class="source">LiveSegmentRecorder.setupWriters_locked()</div>
+<div class="source">HLSSegmentRecorder.setupWriterLocked()</div>
 
 <!--
 この4つがHLS segmentationの核です。
@@ -1303,7 +1484,7 @@ playlistのEXTINFには設定値の2秒ではなく、AVAssetSegmentReportが返
 
 <div class="kicker">KEYFRAME ALIGNMENT</div>
 
-# 2秒で切るなら、2秒以内にIDRを用意する
+# 2秒境界には、2秒以内のIDRが必要
 
 <div class="gop-timeline">
   <div class="frame-row">
@@ -1334,37 +1515,6 @@ MUSTではなくSHOULDなので絶対必須ではありませんが、Apple端�
 
 [Sources]
 - https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices
--->
-
----
-
-<div class="kicker">SEGMENT DELEGATE</div>
-
-# segmentTypeでinitとmediaを分ける
-
-```swift {1-6}
-switch segmentType {
-case .initialization:
-    onInitSegment?(segmentData)
-case .separable:
-    segmentIndex += 1
-    onMediaSegment?(segmentIndex, segmentData, segmentReport)
-@unknown default:
-    break
-}
-```
-
-<div class="source">LiveSegmentRecorder: AVAssetWriterDelegate</div>
-
-<!--
-delegateではsegmentTypeをswitchするだけです。
-initializationはinit用、separableはmedia用としてcallbackへ渡します。
-
-separable Dataはmoofとmdatを含むmedia segmentです。
-AVAssetWriterがすでにHLS向けに分けているため、アプリ側で再muxしません。
-
-AVAssetWriterはアプリ用のseqを決めません。
-delegateで1から採番し、同じseqをpresignとcommitの両方へ渡します。
 -->
 
 ---
@@ -1409,19 +1559,19 @@ Captureが続く間にfragmentがdelegateへ届くため、生成と保存・upl
   </div>
 </div>
 
-<div class="bottom-claim warning"><code>isReadyForMoreMediaData == false</code> は意図的なdrop</div>
+<div class="bottom-claim warning"><code>appendImmediately == false</code> は意図的なdrop</div>
 
 <!--
-DataOutputは一定間隔でCMSampleBufferをpushし続けます。WriterがbusyでisReadyForMoreMediaDataがfalseなら、bufferを保留せずreturnします。
+DataOutputは一定間隔でCMSampleBufferをpushし続けます。WriterがbusyでappendImmediatelyがfalseを返したら、bufferを保留せずreturnします。
 この場合は意図的なdropです。Writerが受け取れるようになった後の新しいframe / audio blockから、すぐappendを再開します。
 
 CMSampleBufferをqueueへ貯めれば完全性は上がりますが、古い映像を後から送るためライブ遅延とメモリ使用量が増えます。
 このサンプルは少しのframe dropを許容し、視聴者へ現在に近い映像を届ける方を優先します。
 
-isReadyForMoreMediaDataがtrueなのにappendがfalseを返す場合は、意図的なdropではありません。Writerの失敗としてstreamをerrorで閉じます。
+appendImmediatelyがthrowした場合は、意図的なdropではありません。Writerの失敗としてstreamをerrorで閉じます。
 
 [Sources]
-- Apple: AVAssetWriterInput.isReadyForMoreMediaData
+- https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
@@ -1462,7 +1612,7 @@ initと最初のm4sがS3に存在し、seq 1のcommitでplaylistへ載った時�
 
 <div class="kicker">PUBLIC SAMPLE · LOCAL PLAYLIST</div>
 
-# サンプルは、playlistのPUT成功後に状態を確定
+# playlist公開後に、状態を確定する
 
 ```swift {1-3|4-6}
 var nextManifest = manifest
