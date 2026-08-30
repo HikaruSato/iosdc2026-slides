@@ -582,31 +582,36 @@ Capture、fMP4化、オブジェクト公開、playlist追従再生。境界を�
 
 ---
 
-<div class="kicker">ROUTE</div>
+<div class="kicker">ONE FRAME'S JOURNEY</div>
 
-# カメラの1 frameが、HLSとして視聴者へ届くまで
+# 1 frameは、約2秒のsegmentへ<br>まとめてから届ける
 
-<div class="route">
-  <div><b>01</b><span>HLSの最小形</span></div>
-  <i></i>
-  <div><b>02</b><span>callbackとTaskの境界</span></div>
-  <i></i>
-  <div><b>03</b><span>CMSampleBufferと時刻</span></div>
-  <i></i>
-  <div><b>04</b><span>fMP4 segment</span></div>
-  <i></i>
-  <div><b>05</b><span>storage保存とplaylist公開</span></div>
+<div class="frame-journey">
+  <div class="capture"><span>01 CALLBACK</span><b>1 video frame</b><small>CMSampleBuffer</small></div>
+  <i>→</i>
+  <div class="writer"><span>02 WRITER</span><b>約60 frames</b><small>+ audio blocks</small></div>
+  <i>→</i>
+  <div class="fragment"><span>03 FRAGMENT</span><b>000001.m4s</b><small>約2秒分</small></div>
+  <i>→</i>
+  <div class="storage"><span>04 STORAGE</span><b>PUT → 2xx</b><small>保存できた</small></div>
+  <i>→</i>
+  <div class="viewer"><span>05 PUBLISH</span><b>playlistへ追加</b><small>ViewerがGET</small></div>
 </div>
 
-<div class="repo-line">https://github.com/HikaruSato/iosdc2026HLSSample</div>
+<div class="bottom-claim">frame単体は送らない。約2秒分を保存してから、playlistで見えるようにする</div>
 
 <!--
-HLSの最小形を確認し、Cameraから届く1 frameがfMP4へ入り、保存後にplaylistへ載ってViewerへ届くまでを追います。
-iosdc2026HLSSampleは、iOSDCのタイミングでpublic repositoryとして公開します。
-発表では、iOSの生成処理を拡大して読むために使います。
+Cameraから届いた1つのvideo CMSampleBufferを、そのまま1ファイルとして送るわけではありません。
+Writerへ順次appendし、ほかのvideo frameとaudio blockを約2秒分まとめます。30fpsなら、おおよそ60 frameです。
 
-映像バイト列のdata planeです。
-iPhoneが完成済みのHLS断片をPUTし、Playerは同じオブジェクトをGETします。サーバーは再エンコードしません。
+IDR境界でmedia segmentが確定すると、delegateから000001.m4sのDataが届きます。
+PublisherはまずそのDataをstorageへ保存し、2xxを確認してからplaylistへURIを追加します。
+Viewerが更新後のplaylistを取得した時点で、このframeを含むsegmentが再生対象になります。
+
+init.mp4は、この流れより先に1回だけ保存します。
+
+この5段階は後続の章に対応します。
+callbackとTaskの境界、CMSampleBufferの時刻、fMP4への分割、storage保存とplaylist公開の順に掘り下げます。
 -->
 
 ---

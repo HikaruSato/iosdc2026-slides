@@ -1047,49 +1047,71 @@ body,
   justify-content: center;
 }
 
-.route {
+.frame-journey {
   align-items: center;
   display: grid;
-  gap: 15px;
-  grid-template-columns: 1fr 35px 1fr 35px 1fr 35px 1fr 35px 1fr;
-  margin-top: 70px;
+  gap: 12px;
+  grid-template-columns: 0.95fr 28px 1.1fr 28px 1fr 28px 0.95fr 28px 1.15fr;
+  margin-top: 58px;
 }
 
-.route div {
-  border-top: 4px solid var(--accent-secondary);
-  padding-top: 15px;
+.frame-journey > div {
+  border-top: 6px solid var(--accent-secondary);
+  min-height: 170px;
+  padding: 17px 8px 0;
 }
 
-.route div:nth-of-type(3),
-.route div:nth-of-type(5) {
+.frame-journey .fragment {
+  background: var(--accent-primary);
   border-color: var(--accent-primary);
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
-.route b {
+.frame-journey .fragment span,
+.frame-journey .fragment b,
+.frame-journey .fragment small {
+  color: var(--white);
+}
+
+.frame-journey .storage,
+.frame-journey .viewer {
+  border-color: var(--success);
+}
+
+.frame-journey span,
+.frame-journey b,
+.frame-journey small {
+  display: block;
+}
+
+.frame-journey span {
   color: var(--muted);
-  display: block;
   font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 22px;
-}
-
-.route span {
-  display: block;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 800;
-  margin-top: 8px;
+  letter-spacing: 0.04em;
 }
 
-.route i {
-  background: var(--line);
-  height: 2px;
+.frame-journey b {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 16px;
 }
 
-.repo-line {
+.frame-journey small {
   color: var(--muted);
-  font-family: "SFMono-Regular", Menlo, monospace;
-  font-size: 22px;
-  margin-top: 48px;
-  text-align: right;
+  font-size: 17px;
+  line-height: 1.4;
+  margin-top: 10px;
+}
+
+.frame-journey > i {
+  color: var(--accent-primary);
+  font-size: 27px;
+  font-style: normal;
+  text-align: center;
 }
 
 /* HLS minimum model */
