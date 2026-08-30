@@ -1661,6 +1661,23 @@ class: closing
   <div><b>04</b><span><strong>終了 · Finish</strong>全送信とENDLISTの公開を待つ</span></div>
 </div>
 
+<!--
+[Timing checkpoint: 37:30]
+
+まとめです。
+AVAssetWriterDelegateでiPhoneからfMP4を逐次取り出し、保存できたsegmentだけをplaylistへ追加します。
+Clock、Boundary、Upload、Finishの順序が揃って初めて、録画ではなくライブ配信になります。
+
+公開サンプルは、そのうちAVFoundationの生成処理を読みやすくした教材です。
+
+次のページで締めます。
+-->
+
+---
+layout: center
+class: closing thanks-slide
+---
+
 <div class="closing-footer">
   <div>
     <b>ありがとうございました</b>
@@ -1669,13 +1686,8 @@ class: closing
 </div>
 
 <!--
-[Timing checkpoint: 37:30]
-
-まとめです。
-AVAssetWriterDelegateでiPhoneからfMP4を逐次取り出し、保存できたsegmentだけをplaylistへ追加します。
-Clock、Boundary、Upload、Finishの順序が揃って初めて、録画ではなくライブ配信になります。
-
-公開サンプルは、そのうちAVFoundationの生成処理を読みやすくした教材です。ありがとうございました。
+ありがとうございました。
+サンプルアプリは、このURLで公開しています。
 
 本編はここで終了します。
 -->

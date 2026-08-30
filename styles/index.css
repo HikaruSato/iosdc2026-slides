@@ -4714,6 +4714,25 @@ body,
   width: 92px;
 }
 
+.thanks-slide .closing-footer {
+  display: block;
+  margin: 0;
+  text-align: center;
+}
+
+.thanks-slide .closing-footer > div {
+  color: var(--on-dark-muted);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 22px;
+  line-height: 1.7;
+}
+
+.thanks-slide .closing-footer b {
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 58px;
+  margin-bottom: 34px;
+}
+
 /* Expanded sample demo and architecture */
 .demo-step h1 {
   font-size: 40px;
