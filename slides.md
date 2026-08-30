@@ -304,6 +304,43 @@ API、保存、配信、状態管理は残ります。なくすのは、映像�
 -->
 
 ---
+
+<div class="kicker">ORIGIN STORY · IMPLEMENTATION</div>
+
+# macOS向けAppleサンプルが、iPhone実装の突破口になった
+
+<div class="implementation-story origin-story">
+  <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>再生できるHLSとして<br>実用まで至らず</small></div>
+  <i>→</i>
+  <div class="reference"><span>Apple fmp4Writer</span><b>正しい生成手順を確認</b><small>Writer設定 · 時刻補正<br>segment delegate</small></div>
+  <i>→</i>
+  <div class="adapt"><span>iPhone local</span><b>fMP4生成に成功</b><small>Camera / Micから<br>init.mp4 + .m4s</small></div>
+  <i>→</i>
+  <div class="product"><span>MomentNow</span><b>ライブ配信へ発展</b><small>撮影中からupload<br>playlistを更新</small></div>
+</div>
+
+<div class="bottom-claim">iPhoneで生成できたことが、個人アプリのライブ配信実装の起点</div>
+
+<div class="source">Apple: Writing fragmented MPEG-4 files for HTTP Live Streaming</div>
+
+<!--
+端末内でfMP4を生成するアイデアを思いつき、2025年3月ごろ最初はAIへ実装させてみました。
+しかし、再生できるHLSとして実用まで到達できませんでした。
+
+突破口になったのがApple公式のfmp4Writerです。
+公式プロジェクトはmacOS 11以降向けのCommand Line Toolで、movie fileをAVAssetReaderで読み込みます。
+一方、AVAssetWriterのHLS profile、URLなしWriter、10秒の時刻offset、segment delegateという核心部分はiOSでも利用できます。
+
+入力をAVCaptureVideoDataOutputとAVCaptureAudioDataOutputへ置き換え、まずiPhone内でinit.mp4とm4sを生成できました。
+この成功で「端末でHLSを作れる」と確認できたことが、MomentNowで撮影中からuploadしてplaylistを更新するライブ配信実装の起点です。
+このトークは、そのローカル生成を配信として成立させるまでの設計を扱います。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
+- https://developer.apple.com/videos/play/wwdc2020/10011/
+-->
+
+---
 layout: center
 class: statement
 ---
@@ -317,7 +354,7 @@ class: statement
   <div class="result-arrow">→</div>
   <div class="result-step strong"><b>約2秒に分ける</b><span>AVAssetWriter</span></div>
   <div class="result-arrow">→</div>
-  <div class="result-step"><b>S3へ保存する</b><span>一時PUT URL</span></div>
+  <div class="result-step"><b>S3へ保存する</b><span>presigned PUT URL</span></div>
   <div class="result-arrow">→</div>
   <div class="result-step"><b>再生順を公開する</b><span>commit API</span></div>
 </div>
@@ -1295,25 +1332,35 @@ Writerのsessionは最初のvideo frameで開始します。
 
 # CMSampleBufferの撮影時刻を、Writerの開始時刻へ移す
 
+<div class="capture-clock-note">
+  <b>58342.31は何秒目？</b>
+  <span>配信開始を0とした経過秒ではなく、CaptureSessionの同期時計が示す位置</span>
+</div>
+
 <div class="dual-axis">
   <div class="axis-row">
-    <b>Capture PTS<small>CMSampleBufferに付く撮影時刻</small></b>
+    <b>Capture PTS<small>CaptureSessionの同期時計</small></b>
     <div class="axis-line"><span class="axis-value source-value">58342.31</span><i></i><i></i><i></i><em>…</em></div>
   </div>
   <div class="axis-transform">− firstVideoPTS + 10s</div>
   <div class="axis-row target">
-    <b>Writer timeline<small>この配信内の時刻</small></b>
+    <b>Writer timeline<small>配信内の時刻</small></b>
     <div class="axis-line"><span class="axis-value target-value">10.00</span><i></i><i></i><i></i><em>…</em></div>
   </div>
 </div>
 
 <div class="bottom-claim warning">10秒起点は今回のWriter設定。HLS仕様の固定値ではない</div>
 
-<div class="source">CMSampleBuffer presentationTimeStamp / writer.initialSegmentStartTime</div>
-
 <!--
-Capture PTSはCaptureSessionの連続時間です。大きな値から始まることがあります。
+Capture PTSは配信開始からの経過時間ではありません。
+AVCaptureSessionのsynchronizationClockが、すべてのcapture outputのCMSampleBufferに共通のtimebaseを与えます。
+その時計の0は配信開始ではないため、最初のframeでも58342.31のような大きな値から始まることがあります。
+ここで重要なのは値そのものではなく、VideoとAudioが同じ時計上にあり、frame間の時間差を比較できることです。
 一方、Writerは10秒起点へ明示的に揃えるため、両者を変換します。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avcapturesession/synchronizationclock
+- https://developer.apple.com/documentation/coremedia/cmsamplebuffer/presentationtimestamp
 -->
 
 ---
@@ -1382,38 +1429,6 @@ class: chapter
 [Timing checkpoint: 23:00]
 
 Captureの時計が揃ったので、次は約2秒のfragment境界を作るHLS固有設定を見ます。
--->
-
----
-
-<div class="kicker">WHAT UNBLOCKED THE IMPLEMENTATION</div>
-
-# macOS向けAppleサンプルが、iOS実装の突破口になった
-
-<div class="implementation-story">
-  <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>再生できるHLSとして<br>実用まで至らず</small></div>
-  <i>→</i>
-  <div class="reference"><span>Apple fmp4Writer</span><b>正しい生成手順を確認</b><small>Writer設定 · 時刻補正<br>segment delegate</small></div>
-  <i>→</i>
-  <div class="adapt"><span>iPhone</span><b>Camera / Micへ置換</b><small>AVAssetWriterの核心部分を<br>iOSで利用</small></div>
-</div>
-
-<div class="bottom-claim">macOSのmovie入力を、iOSのライブCapture入力へ置き換えた</div>
-
-<div class="source">Apple: Writing fragmented MPEG-4 files for HTTP Live Streaming</div>
-
-<!--
-端末内でfMP4を生成するアイデアを思いつき、2025年3月ごろ最初はAIへ実装させてみました。
-しかし、再生できるHLSとして実用まで到達できませんでした。
-
-突破口になったのがApple公式のfmp4Writerです。
-公式プロジェクトはmacOS 11以降向けのCommand Line Toolで、movie fileをAVAssetReaderで読み込みます。
-一方、AVAssetWriterのHLS profile、URLなしWriter、10秒の時刻offset、segment delegateという核心部分はiOSでも利用できます。
-入力だけをAVCaptureVideoDataOutputとAVCaptureAudioDataOutputへ置き換え、ライブCaptureからの生成へつなげました。
-
-[Sources]
-- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
-- https://developer.apple.com/videos/play/wwdc2020/10011/
 -->
 
 ---
@@ -1701,7 +1716,7 @@ class: chapter
 
 <div class="settings-table">
   <div class="settings-head"><span>APPの操作</span><span>MomentNow</span><span>結果</span></div>
-  <div><b>一時保存先を受け取る</b><code>POST /presign</code><span>短期PUT URL</span></div>
+  <div><b>S3への署名付きURLを受け取る</b><code>POST /presign</code><span>presigned PUT URL</span></div>
   <div><b>segment本体を保存する</b><code>PUT → S3</code><span>objectが存在する</span></div>
   <div><b>playlistへ載せる</b><code>POST /commit</code><span>Viewerから見える</span></div>
   <div><b>playlistを取得する</b><code>GET → CloudFront</code><span>再生が進む</span></div>
@@ -1711,7 +1726,7 @@ class: chapter
 
 <!--
 観客がMomentNowのコードを知らなくても追えるよう、まず4つの操作として説明します。
-一時アップロード先を受け取り、segment本体を保存し、成功したあとにだけplaylistへ載せ、Viewerが取得します。
+S3へPUTするための署名付きURLを受け取り、segment本体を保存し、成功したあとにだけplaylistへ載せ、Viewerが取得します。
 
 MomentNowではpresign API、S3 PUT、commit API、CloudFrontが担当します。
 公開サンプルではMacのHTTPサーバーが保存とplaylist更新を担当します。S3自体はHLSの必須要素ではありません。
@@ -1720,40 +1735,6 @@ MomentNowではpresign API、S3 PUT、commit API、CloudFrontが担当します�
 - MomentNow-Lambda/src/presign.ts
 - MomentNow-Lambda/src/commit.ts
 - iosdc2026HLSSample/server/server.py
--->
-
----
-
-<div class="kicker">PREPARE BEFORE MEDIA</div>
-
-# segment前にstreamIdと再生URLを準備
-
-<div class="create-stream-flow">
-  <div><b>createStream</b><span>streamId / prefix</span></div>
-  <i>→</i>
-  <div><b>ticket</b><span>playbackUrl</span></div>
-  <i>→</i>
-  <div><b>permission</b><span>camera / microphone</span></div>
-  <i>→</i>
-  <div><b>ready</b><span>previewSession</span></div>
-</div>
-
-```swift
-if ticket == nil {
-    ticket = try await apiClient.ticket(streamId: stream.streamId)
-}
-await requestPermissionsAndSetup()
-try await streamer?.start()
-```
-
-<div class="source">LiveStreamViewModel.prepare()</div>
-
-<!--
-配信画面へ入る前にstreamは作成済みです。
-ViewModelはticket、権限、previewを揃えてreadyへ進み、録画開始後すぐuploadできる状態を作ります。
-
-Recorderは同期callbackを返し、StreamerがTaskを作ってUploaderへ渡します。
-AVFoundationのwritingQueueをURLSessionの完了待ちで塞がない責務分割です。
 -->
 
 ---
@@ -1803,15 +1784,15 @@ _ = try await api.commit(
 ```
 
 <!--
-presign APIから、seqに対応する一時PUT URLを取得します。
+presign APIから、seqに対応するS3の署名付きPUT URLを取得します。
 S3 PUTが成功した後だけcommitし、サーバーへplaylistへ載せてよいseqを通知します。
 -->
 
 ---
 
-<div class="kicker">NO AWS CREDENTIAL ON DEVICE</div>
+<div class="kicker">S3 PRESIGNED PUT URL</div>
 
-# iPhoneへ渡すのは、短期のPUT URLだけ
+# サーバーが、S3へPUTするための<br>署名付きURLを発行する
 
 <div class="choice-compare">
   <div class="choice muted">
@@ -1822,12 +1803,12 @@ S3 PUTが成功した後だけcommitし、サーバーへplaylistへ載せてよ
   <div class="choice-arrow">→</div>
   <div class="choice selected">
     <span>PRESIGNED URL</span>
-    <b>object単位のPUT権限</b>
-    <small>streamId / kind / seqで制約</small>
+    <b>S3へ1 objectだけPUT</b>
+    <small>object key / 有効期限を署名</small>
   </div>
 </div>
 
-<div class="bottom-claim">サーバーが「この1ファイルだけPUTしてよいURL」を一時発行する</div>
+<div class="bottom-claim">iPhoneは発行されたURLへDataをPUTするだけ。AWS credentialは持たない</div>
 
 ```swift
 var request = URLRequest(url: presignedURL)
@@ -1838,7 +1819,9 @@ request.httpBody = data
 
 <!--
 iOSアプリはS3のcredentialを持ちません。
-認証済みAPIからobject単位の一時URLを取得し、URLSessionでDataを直接PUTします。
+認証済みAPIが、S3の特定objectへPUTするためのpresigned URLを発行します。
+iPhoneはそのURLをURLSessionへ渡し、init.mp4またはm4sのDataをS3へ直接PUTします。
+URLにはobject keyと有効期限が署名されているため、アプリへAWS credentialを配布する必要がありません。
 -->
 
 ---
@@ -1857,8 +1840,6 @@ iOSアプリはS3のcredentialを持ちません。
     <div>S3 PUT完了</div><b>→</b><div>commit</div><b>→</b><div>playlist更新</div>
   </div>
 </div>
-
-<div class="bottom-claim">サンプルは最大3回retry · 失敗したsegmentはplaylistへ載せない</div>
 
 <!--
 順序が重要です。
@@ -1893,68 +1874,6 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
 actorでもawait中は別segmentが進むため、seg 2がseg 1より先にPUT完了する可能性があります。
 iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをseq順へ並べ直しますが、連続番号だけに制限する契約ではありません。seg 2が先なら、一時的にseg 2だけが公開されます。
 理想は、サーバーが連続したseqまでの「公開済み境界」を管理することです。
--->
-
----
-
-<div class="kicker">ACTOR STATE</div>
-
-# Actorは、uploadと終了の状態をまとめて守る
-
-<div class="concurrency-map">
-  <div class="concurrency-row">
-    <b>didUploadInit</b><span>init.mp4の重複PUTを防ぐ</span><i class="green"></i>
-  </div>
-  <div class="concurrency-row">
-    <b>lastCommittedSeq</b><span>commit成功済みの最大seq</span><i class="cobalt"></i>
-  </div>
-  <div class="concurrency-row">
-    <b>inUploadSegmentCount</b><span>停止時に待つbacklog</span><i class="coral"></i>
-  </div>
-  <div class="concurrency-row">
-    <b>isFinishing</b><span>遅れて完了したsegmentでもENDLISTを再通知</span><i class="coral"></i>
-  </div>
-</div>
-
-<div class="bottom-claim warning">actor内のawaitは再入可能。完了順ではなくseqを正とする</div>
-
-<!--
-Coordinatorはactorですが、presignやPUTのawait中に別segmentの処理が進みます。
-そのため到着順や完了順ではなく、seqとpending countを明示的な状態として持ちます。
-lastCommittedSeqはcommit成功済みの最大seqであり、それ以前のseqがすべて成功したことは保証しません。
--->
-
----
-
-<div class="kicker">STOP CONTRACT</div>
-
-# 現状は、actorへ入った<br>uploadが0になるまで待つ
-
-<div class="publish-order four-step">
-  <div class="publish-step"><b>1</b><span>recorder.stop()</span></div>
-  <div class="publish-arrow">→</div>
-  <div class="publish-step"><b>2</b><span>uploader.finish()</span></div>
-  <div class="publish-arrow">→</div>
-  <div class="publish-step"><b>3</b><span>actor内 pending == 0</span></div>
-  <div class="publish-arrow">→</div>
-  <div class="publish-step"><b>4</b><span>state = completed</span></div>
-</div>
-
-```swift
-while await streamer.hasPendingUploads() {
-    try? await Task.sleep(for: .milliseconds(500))
-}
-```
-
-<div class="source">LiveStreamViewModel.stop()</div>
-
-<div class="bottom-claim warning">理想はupload Task／イベント列そのものとfinal commitをawaitすること</div>
-
-<!--
-録画停止は、ネットワーク送信完了と同義ではありません。
-現在の個人アプリ実装はUploaderへisLastを通知し、actor内のpending uploadがゼロになるまでcompletedへ進めません。
-ただし、onMediaSegmentで作ったTaskがactorに入る前はpending countへ反映されません。そのため、Taskが残っていてもpendingが0に見える余地があります。
-公開サンプルはAsyncThrowingStreamのconsumer Taskを保持し、Recorderがstreamを閉じた後にTaskの終了までawaitします。完了契約としてはこちらのほうが明確です。
 -->
 
 ---
@@ -2042,24 +1961,6 @@ iosdc2026HLSSampleはMacを小さなobject serverとして使います。
 -->
 
 ---
-layout: center
-class: statement ink-statement
----
-
-<div class="kicker">BACK TO THE DEMO</div>
-
-# 冒頭のデモで増えていたのは<br><span class="accent-primary">「ファイル」と「再生可能な順序」</span>
-
-<div class="demo-recap">
-  <span>init.mp4</span><i>＋</i><span>000001.m4s</span><i>＋</i><span>playlist更新</span><i>＝</i><b>LIVE</b>
-</div>
-
-<!--
-冒頭のデモへ戻ります。
-ライブ配信に見えていたものは、iPhoneが作るファイルと、存在確認後にplaylistへ載せる順序の積み重ねでした。
--->
-
----
 
 <div class="kicker">FIT, NOT UNIVERSAL</div>
 
@@ -2105,6 +2006,7 @@ class: closing
 <div class="closing-footer">
   <div>
     <b>ありがとうございました</b>
+    サンプルアプリのコード<br>https://github.com/HikaruSato/iosdc2026HLSSample
   </div>
 </div>
 
@@ -2136,63 +2038,6 @@ class: chapter
 質問に応じて、設定値、時刻補正、サーバー運用の詳細を参照します。
 -->
 
-
----
-
-<div class="kicker">SOURCE TREE</div>
-
-# 9ファイルで、生成から再生まで追える
-
-<div class="source-tree">
-  <div class="source-row core"><b>HLSSegmentRecorder.swift</b><span>capture / encode / segment</span></div>
-  <div class="source-row core"><b>SampleHLSStreamer.swift</b><span>recorderとuploadを接続</span></div>
-  <div class="source-row core"><b>HLSStreamPublisher.swift</b><span>順序 / retry / finish</span></div>
-  <div class="source-row core"><b>HLSManifest.swift</b><span>playlist state</span></div>
-  <div class="source-row core"><b>HTTPHLSClient.swift</b><span>PUT / health check</span></div>
-  <div class="source-row"><b>SampleStreamViewModel.swift</b><span>permission / UI state</span></div>
-  <div class="source-row"><b>ContentView.swift</b><span>操作と観測</span></div>
-  <div class="source-row"><b>server.py</b><span>atomic replace / GET</span></div>
-  <div class="source-row"><b>static/app.js</b><span>latest stream / hls.js</span></div>
-</div>
-
-<!--
-中心は上の5ファイルです。
-下の4つは操作、保存、再生確認を担当します。ここから、画面からdelegate callbackまで呼び出し順に追います。
-
-[Sources]
-- iosdc2026HLSSample repository tree
--->
-
----
-
-<div class="kicker">START ORDER · APPENDIX</div>
-
-# streamを準備してから、Publisherへ渡す
-
-```swift {1|3-5|7-10}
-let fragments = try await recorder.startRecording()
-
-let uploadTask = Task {
-    await publisher.publish(fragments)
-}
-
-activeStream = ActiveStream(
-    publisher: publisher,
-    uploadTask: uploadTask
-)
-```
-
-<!--
-RecorderはAsyncThrowingStreamのcontinuationを保持してからWriterを有効にし、準備済みのstreamを返します。
-そのため、PublisherのTaskが動き出す前にinit Dataが届いてもstream内にbufferされます。
-
-Writer delegateは同期callbackです。
-そこでDataをAsyncThrowingStreamへ渡してすぐ戻り、HTTP処理はPublisher側でawaitします。メディア処理とネットワーク待ちの境界です。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
--->
 
 ---
 
@@ -2242,8 +2087,6 @@ try audio.setActive(true)
   <div><span>Capture</span><b>camera + microphone</b></div>
   <div><span>Route</span><b>speaker + Bluetooth HFP</b></div>
 </div>
-
-<div class="bottom-claim">AVCaptureSessionだけでなく、AVAudioSessionのrouteも配信品質に影響する</div>
 
 <!--
 録音権限だけではなく、AVAudioSessionのcategoryとmodeを先に設定します。
@@ -2441,7 +2284,7 @@ reportがない、無効、0以下の場合だけ設定値の2秒へ戻します
 
 <div class="kicker">PUBLIC SAMPLE · RETRY POLICY</div>
 
-# 公開サンプルは、同じobjectを<br>最大3回まで再送する
+# サンプルは、同じobjectを<br>最大3回まで再送する
 
 <div class="retry-steps">
   <div><b>attempt 1</b><span>失敗</span><small>250 ms</small></div>
@@ -2454,7 +2297,7 @@ reportがない、無効、0以下の場合だけ設定値の2秒へ戻します
 <div class="bottom-claim warning">segment PUTが失敗したら、そのsegmentをplaylistへ載せない</div>
 
 <!--
-サンプルは各PUTを最大3回試します。
+サンプルアプリは各PUTを最大3回試します。
 segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publisherのerrorとして残します。
 
 [Sources]
