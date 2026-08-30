@@ -85,20 +85,13 @@ class: speaker-intro
 # 話すこと
 
 <div class="chapter-overview">
-  <div><b>01</b><span>HLSが<br>ライブになる条件</span></div>
-  <i>→</i>
-  <div><b>02</b><span>サンプルアプリの<br>責務を分ける</span></div>
-  <i>→</i>
-  <div><b>03</b><span>映像と音声を<br>同じ時間軸へ</span></div>
-  <i>→</i>
-  <div><b>04</b><span>約2秒の<br>fMP4を生成</span></div>
-  <i>→</i>
-  <div><b>05</b><span>保存してから<br>playlistへ公開</span></div>
-  <i>→</i>
-  <div><b>06</b><span>最後の公開まで<br>完了を管理</span></div>
+  <div><b>01</b><span>HLSがライブになる仕組み</span></div>
+  <div><b>02</b><span>サンプルアプリを動かす</span></div>
+  <div><b>03</b><span>映像と音声を同じ時間軸へ</span></div>
+  <div><b>04</b><span>約2秒のfMP4を生成</span></div>
+  <div><b>05</b><span>保存してからplaylistへ公開</span></div>
+  <div><b>06</b><span>最後の公開まで完了を管理</span></div>
 </div>
-
-<div class="bottom-claim">取り込む → 分割する → 保存する → 公開する → 再生する</div>
 
 <!--
 最初にHLSがライブになる仕組みを確認し、動くサンプルアプリを見ます。
@@ -288,7 +281,7 @@ API、保存、配信、状態管理は残ります。なくすのは、映像�
 <div class="kicker">WHY</div>
 <div class="story-split">
   <div>
-    <h1>1ファイルだと<br>アップロードに時間がかかって共有したい瞬間から遠ざかる</h1>
+    <h1>1ファイルだと撮影後、共有するためのアップロードに時間がかかる</h1>
     <p class="lead">撮影中からアップロードできていれば共有も楽</p>
   </div>
   <div class="why-files">
