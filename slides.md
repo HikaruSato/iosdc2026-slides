@@ -388,7 +388,7 @@ class: statement
 
 <!--
 録画開始後、init.mp4を1回、m4sを約2秒ごとに生成します。
-各DataをS3へPUTし、成功したseqだけをcommitすると、視聴者のplaylistが伸びていきます。
+各DataをS3へPUTし、保存に成功したsegmentだけをplaylistへ反映すると、視聴者が再生できる範囲が伸びていきます。
 -->
 
 ---
@@ -657,7 +657,7 @@ CMSampleBufferは、Cameraから約1 frame、Micから短いaudio blockずつ届
 Cameraから届いた1つのvideo CMSampleBufferを、そのまま1ファイルとして送るわけではありません。
 Writerへ順次appendし、ほかのvideo frameとaudio blockを約2秒分まとめます。30fpsなら、おおよそ60 frameです。
 
-IDR境界でmedia segmentが確定すると、delegateから000001.m4sのDataが届きます。
+ほかのframeを参照せず再生を始められるkeyframeの境界でmedia segmentが確定すると、delegateから000001.m4sのDataが届きます。
 PublisherはまずそのDataをstorageへ保存し、HTTP成功（2xx）を確認してからplaylistへURIを追加します。
 Viewerが更新後のplaylistを取得した時点で、このframeを含むsegmentが再生対象になります。
 
@@ -683,6 +683,8 @@ class: chapter
 
 ここから公開サンプルのHLSSegmentRecorderへ入ります。
 標準SDKのobjectをどう接続すると、CameraとMicからfMP4 Dataを取り出せるのかを順番に見ます。
+本番の必須導線は、責務分界、SDK object、Capture callback、Writer / Receiver、segment生成、delegate出力、最小手順です。
+Optional detailのページは時間に応じて省略し、8分で生成経路を優先します。
 -->
 
 ---
@@ -992,6 +994,8 @@ videoOutput.videoSettings = [
 <div class="source">HLSSegmentRecorder.setupCaptureSessionLocked()</div>
 
 <!--
+[Optional detail: 時間が厳しい場合は省略]
+
 DataOutputからは未圧縮映像のpixel bufferを受け取ります。
 H.264への圧縮はAVAssetWriterInputのoutputSettingsが担当します。
 HighはApple SDKで指定できるH.264 profileの名前です。
@@ -1057,9 +1061,9 @@ HighはApple SDKで指定できるH.264 profileの名前です。
 
 ---
 
-<div class="kicker">URL-LESS HLS WRITER</div>
+<div class="kicker">URL-LESS HLS WRITER · iOS 26+</div>
 
-# HLS用Writer
+# URLなしのAVAssetWriterを、Apple HLS profileで作る
 
 <div class="writer-setup-layout">
 
@@ -1083,11 +1087,15 @@ writer.delegate = self
 
 </div>
 
-<div class="bottom-claim">Writer自身はファイルへ保存せず、生成したfMP4をDataで返す</div>
+<div class="bottom-claim">MP4形式を選び、Apple HLS profileでsegment Dataをdelegate出力する</div>
 
 <!--
+このサンプルのWriterコードはiOS 26以上が対象です。
 通常の録画では出力先URLを指定しますが、segment delegateを使う構成ではcontentTypeだけでWriterを作ります。
 Apple HLS profile、希望segment間隔、initial start time、delegateを設定します。
+
+contentTypeのmpeg4MovieはMP4というcontainerの種類、outputFileTypeProfileのmpeg4AppleHLSはHLS向けfragment出力の指定です。
+名前は似ていますが競合する設定ではありません。
 
 このdelegate methodを実装すると通常のファイル書き込みは抑止され、Writerがsegment Dataをcallbackします。
 各propertyの意味と2秒境界はChapter 04で詳しく見ます。
@@ -1101,9 +1109,9 @@ preferredTimescaleに 600 を指定した場合、1秒は 600/600 となり、1/
 
 ---
 
-<div class="kicker">INPUT → RECEIVER → WRITER</div>
+<div class="kicker">INPUT → RECEIVER → WRITER · iOS 26+</div>
 
-# Receiverが、sampleの書き込み口になる
+# CMSampleBufferの入口はReceiver
 
 <div class="receiver-setup-layout">
 
@@ -1134,11 +1142,14 @@ self.audioReceiver = writer.inputReceiver(
 
 </div>
 
-<div class="bottom-claim">Inputがencode設定を持ち、ReceiverがCMSampleBufferの入口になる</div>
+<div class="bottom-claim"><code>inputReceiver(for:)</code>はiOS 26+。Inputを接続し、CMSampleBufferの入口を返す</div>
 
 <!--
 AVAssetWriterInputには、VideoならH.264、AudioならAACなどのencode設定を渡します。
 inputReceiver(for:)は、そのInputをWriterへ接続すると同時に、CMSampleBufferを書き込むReceiverを返します。
+
+これはiOS 26以上のSampleBufferReceiver APIです。
+従来のwriter.add(input)とinput.append(sampleBuffer)に相当する接続と書き込みを、Receiver経由で行います。
 
 Inputはsetup中のローカル変数で十分です。
 一方ReceiverはcaptureOutputが呼ばれるたびに使うため、HLSSegmentRecorderのpropertyとして保持します。
@@ -1208,6 +1219,8 @@ guard CMSampleBufferDataIsReady(sampleBuffer) else { return }
 ```
 
 <!--
+[Optional detail: 時間が厳しい場合は省略]
+
 CaptureSessionが動いていても、Writerへ渡すのは配信中だけです。
 CMSampleBufferのDataがreadyでない場合も早期returnし、Writerの状態遷移を単純に保ちます。
 Writerが受け取れないときにframeを貯めない判断は、Chapter 06で説明します。
@@ -1218,9 +1231,9 @@ Writerが受け取れないときにframeを貯めない判断は、Chapter 06�
 
 ---
 
-<div class="kicker">CAPTURE CALLBACK → RECEIVER</div>
+<div class="kicker">CAPTURE CALLBACK → RECEIVER · iOS 26+</div>
 
-# 1回のcallbackで、1つのsampleをReceiverへ渡す
+# 1回のcallbackで、1つのCMSampleBufferをReceiverへ渡す
 
 <div class="append-pipeline">
   <div><span>DataOutput delegate</span><b>captureOutput</b></div>
@@ -1251,8 +1264,9 @@ captureOutputが呼ばれるたび、CMSampleBufferの時刻を補正し、CoreM
 その後、VideoまたはAudioのReceiverへappendImmediatelyします。
 
 appendImmediatelyは同期的に受け入れを試します。
-trueならappend成功、falseならWriterがまだ受け入れられないため、そのsampleを待たずに落とします。throwならWriter自体の失敗としてAsyncThrowingStreamをerrorで閉じます。
+trueならappend成功、falseならWriterがまだ受け入れられないため、そのCMSampleBufferを待たずに落とします。throwならWriter自体の失敗としてAsyncThrowingStreamをerrorで閉じます。
 待つappendではなくappendImmediatelyを選ぶ理由は、Camera callbackへ古いframeを貯めないためです。
+CMReadySampleBufferとappendImmediatelyもiOS 26以上のAPIです。
 
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
@@ -1270,7 +1284,7 @@ trueならappend成功、falseならWriterがまだ受け入れられないた�
     <code>.initialization</code><i>→</i><b>HLSFragment.initialization</b><i>→</i><strong>init.mp4</strong>
   </div>
   <div class="fragment-route media">
-    <code>.separable</code><i>→</i><b>HLSFragment.media(seq, …)</b><i>→</i><strong>seg/000001.m4s</strong>
+    <code>.separable</code><i>→</i><b>HLSFragment.media(sequence, …)</b><i>→</i><strong>seg/000001.m4s</strong>
   </div>
 </div>
 
@@ -1384,7 +1398,7 @@ Writerのsessionは最初のvideo frameで開始します。
 
 <div class="kicker">INITIAL START TIME</div>
 
-# Writerの最初のsegmentは、10秒起点に固定
+# Writerを10秒から始め、先行するAudioの余白を作る
 
 <div class="start-time-visual">
   <div class="start-empty"><span>0</span><i></i><i></i><i></i><i></i></div>
@@ -1397,11 +1411,19 @@ private let startTimeOffset = CMTime(value: 10, timescale: 1)
 writer.initialSegmentStartTime = startTimeOffset
 ```
 
+<div class="bottom-claim warning">Audioは最初のvideoより少し前の時刻を持つことがある。10秒は、その分を正の時刻へ置く余白</div>
+
 <!--
 [Optional detail: 時間が厳しい場合は省略]
 
 個人アプリのHLS Writerも初期segmentの開始を10秒へ設定します。
-Capture PTSの補正は、この指定と入力CMSampleBufferを一致させるために必要でした。
+AAC encoderのprimingを含むAudioは、最初のvideo frameより少し前の時刻を持つことがあります。
+Apple公式サンプルと同様にWriter timelineを10秒から始めると、そのAudioを負の時刻にせず置ける余白ができます。
+10秒という値自体はHLS仕様ではなく、Capture PTSの補正は、このWriter設定と入力CMSampleBufferを一致させるために行います。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
+- https://developer.apple.com/videos/play/wwdc2020/10011/
 -->
 
 ---
@@ -1513,7 +1535,7 @@ PTSだけでなく、frameをdecodeする順番の時刻であるDTSも、有効
   </div>
 </div>
 
-<div class="bottom-claim">相対差を保ったまま、Writerのtime rangeへ移す</div>
+<div class="bottom-claim">VideoとAudioの相対差を保ち、先行するAudioも10秒より少し前へ置く</div>
 
 <!--
 音声用の開始時刻を別に決めると、A/Vの相対差が変わります。
@@ -1754,7 +1776,7 @@ S3はファイルをobjectとして保存するサービス、CloudFrontはそ�
 <div class="atomic-replace">
   <div><b>1 temporary file</b><span>request bodyを書き込む</span></div>
   <i>→</i>
-  <div><b>2 flush + fsync</b><span>長さまで書き切る</span></div>
+  <div><b>2 ディスクへ書き切る</b><span>flush + fsync</span></div>
   <i>→</i>
   <div class="hot"><b>3 os.replace</b><span>完成品へ一気に置換</span></div>
 </div>
@@ -1818,7 +1840,7 @@ manifest = nextManifest
   <div class="hot"><span>状態を確定</span><b>current = candidate</b></div>
 </div>
 
-<div class="bottom-claim">公開サンプルでは、iPhone自身がplaylist本文を更新してPUTする</div>
+<div class="bottom-claim">seqはsegment番号。iPhoneはplaylist本文を更新し、PUT成功後に状態を確定する</div>
 
 <!--
 サンプルのHLSManifestはseqをkeyにしてsegmentを保持し、表示時には必ず番号順にします。
@@ -1834,7 +1856,7 @@ manifest = nextManifest
 
 <div class="kicker">PRODUCTION PUBLISH FLOW</div>
 
-# 「保存先を受け取る → 保存する → 公開する」に分ける
+# 署名付きURL → S3 PUT → playlist公開
 
 <div class="settings-table">
   <div class="settings-head"><span>APPの操作</span><span>MomentNow</span><span>結果</span></div>
@@ -1953,7 +1975,7 @@ media Dataは約2秒ごとに、seqに対応する署名付きURLを取得して
 <!--
 順序が重要です。
 PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで見つけたURIをGETして404になります。
-公開サンプルは同じobjectを最大3回まで再送し、それでも失敗した場合はplaylist更新へ進まずerrorとして残します。
+公開サンプルは同じファイルを最大3回まで再送し、それでも失敗した場合はplaylist更新へ進まずerrorとして残します。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
@@ -1963,7 +1985,7 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
 
 <div class="kicker">PUBLIC SAMPLE · RETRY POLICY</div>
 
-# サンプルは、同じobjectを<br>最大3回まで再送する
+# サンプルは、同じファイルを<br>最大3回まで再送する
 
 <div class="retry-steps">
   <div><b>attempt 1</b><span>失敗</span><small>250 ms</small></div>
@@ -2024,7 +2046,7 @@ iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをs
 <div class="cache-table server-cache-table">
   <div class="cache-head"><span>OBJECT</span><span>CACHE</span><span>HTTP</span></div>
   <div class="dynamic"><b>playlist.m3u8</b><span>no-store / no-cache</span><code>毎回最新を取得</code></div>
-  <div class="immutable"><b>init.mp4 / m4s</b><span>max-age=31536000</span><code>Range / 206対応</code></div>
+  <div class="immutable"><b>init.mp4 / m4s</b><span>max-age=31536000</span><code>Range / 206（部分取得）</code></div>
 </div>
 
 <div class="bottom-claim compact">S3 / CloudFrontでの設定</div>
@@ -2107,24 +2129,24 @@ HTTP処理はHLSStreamPublisherのTaskでawaitします。
 
 <div class="kicker">BACKPRESSURE DECISION</div>
 
-# Writerが詰まったら、古いframeを捨てる
+# 詰まったWriterを待たず、映像・音声を落とす
 
 <div class="drop-timeline">
-  <div class="drop-lane"><b>Camera</b><span>frame 1</span><span>frame 2</span><span>frame 3</span><span>frame 4</span></div>
+  <div class="drop-lane"><b>Capture</b><span>video 1</span><span>audio 1</span><span>video 2</span><span>audio 2</span></div>
   <div class="drop-lane writer"><b>Writer</b><span class="append">append</span><span class="append">append</span><span class="busy">busy</span><span class="dropped">drop</span></div>
 </div>
 
 <div class="drop-choice">
   <div class="wait-choice"><span>待って貯める</span><b>古い映像が残り、遅延が増える</b></div>
-  <div class="drop-choice-current"><span>待たずに落とす</span><b>少しカクつくが、現在へ追いつく</b></div>
+  <div class="drop-choice-current"><span>待たずに落とす</span><b>映像のカクつき／音声の欠けと引き換えに、現在へ追いつく</b></div>
 </div>
 
-<div class="bottom-claim warning">この実装では <code>appendImmediately == false</code> ならdrop</div>
+<div class="bottom-claim warning">この実装では <code>appendImmediately == false</code> なら、そのCMSampleBufferをdrop</div>
 
 <!--
-DataOutputは一定間隔でCMSampleBufferをpushし続けます。
+VideoとAudioのDataOutputは一定間隔でCMSampleBufferをpushし続けます。
 Writerが受け取れずappendImmediatelyがfalseを返した場合、この実装ではbufferを保留せずreturnします。
-古い映像をqueueへ貯めるとライブ遅延とメモリ使用量が増えるため、少しのframe dropを許容して現在へ追いつく設計です。
+古い映像・音声をqueueへ貯めるとライブ遅延とメモリ使用量が増えるため、映像のカクつきや音声の欠けを許容して現在へ追いつく設計です。
 appendImmediatelyがthrowした場合はWriterの失敗としてstreamをerrorで閉じます。
 
 [Sources]
@@ -2261,12 +2283,16 @@ class: closing
   <div><b>04</b><span><strong>終了 · Finish</strong>全送信とENDLISTの公開を待つ</span></div>
 </div>
 
+<div class="takeaway-path"><b>端末内生成</b><span>AVCaptureSession → DataOutput → Receiver → AVAssetWriterDelegate</span></div>
+
 <!--
 [Timing checkpoint: 37:30]
 
 まとめです。
 AVAssetWriterDelegateでiPhoneからfMP4を逐次取り出し、保存できたsegmentだけをplaylistへ追加します。
 Clock、Boundary、Upload、Finishの順序が揃って初めて、録画ではなくライブ配信になります。
+
+実装の接続は、AVCaptureSessionからDataOutput、Receiver、AVAssetWriterDelegateまでの1本です。
 
 公開サンプルは、そのうちAVFoundationの生成処理を読みやすくした教材です。
 

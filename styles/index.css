@@ -4683,6 +4683,22 @@ body,
   margin-bottom: 3px;
 }
 
+.takeaway-path {
+  border-top: 1px solid var(--on-dark-line);
+  color: var(--on-dark-muted);
+  display: flex;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 17px;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 18px;
+  padding-top: 13px;
+}
+
+.takeaway-path b {
+  color: var(--accent-primary);
+}
+
 .closing-footer {
   align-items: end;
   display: grid;
