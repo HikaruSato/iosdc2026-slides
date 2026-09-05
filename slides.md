@@ -55,7 +55,7 @@ class: speaker-intro
       主に iOS / Android / Ruby on Rails のアプリ開発をやっています
     </div>
     <div class="speaker-intro-app">
-      <p>MomentNow という「今この瞬間」の動画をHLSで配信し、<br>URLで共有できる iOSアプリ を個人開発してます</p>
+      <p><a href="https://apps.apple.com/jp/app/%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97%E5%8B%95%E7%94%BB%E5%85%B1%E6%9C%89-momentnow/id6759968148" style="color: var(--accent-primary); text-decoration: underline;">MomentNow</a> という「今この瞬間」の動画をHLSで配信し、<br>URLで共有できる iOSアプリ を個人開発してます</p>
     </div>
   </div>
 
