@@ -37,6 +37,10 @@ exportFilename: iosdc2026-hls-on-iphone
 <!--
 [Timing checkpoint: 00:00]
 
+全Timing checkpointは練習用の仮目安で、実測済みの所要時間ではありません。
+通常は本編を話し、Optional detailは時間超過時だけの予備とします。
+デモ込みの通し練習で35〜37分を目指し、実測後に各チェックポイントを調整します。
+
 今日は、iPhone自身をエンコーダー兼セグメンターにして、生成したHLSをS3へ順次アップロードし、ライブ配信にした実装を話します。
 いきなり実装へ入らず、まずHLSがどのファイルをどう更新するとライブ配信になるのかを確認します。その全体像へ今回のiPhone実装を当てはめ、早い段階でデモを動かします。
 -->
@@ -426,6 +430,10 @@ class: statement
 ここまで確認したHLSの仕組みを、公開サンプルで実際に動かします。
 iPhoneはHLSを生成してMacへHTTP PUTし、MacのViewer（Playerを使う再生画面）は同じファイルをHTTP GETして追従再生します。
 
+Safariでplaylistが更新される間の追従再生を見せ、同じplaylist URLをiOSのAVPlayerへ渡した再生確認にも触れます。
+Macにinit.mp4、m4s、playlistが残ることと、停止後も同じURLで再生できることを確認します。
+この説明はライブデモ成功時にも省略しません。
+
 会場Wi-Fiが不安定な場合はライブ操作を省略し、次の5枚で同じ流れを説明します。ライブデモが成功した場合は、この5枚を省略します。
 
 [Sources]
@@ -684,7 +692,8 @@ class: chapter
 ここから公開サンプルのHLSSegmentRecorderへ入ります。
 標準SDKのobjectをどう接続すると、CameraとMicからfMP4 Dataを取り出せるのかを順番に見ます。
 本番の必須導線は、責務分界、SDK object、Capture callback、Writer / Receiver、segment生成、delegate出力、最小手順です。
-Optional detailのページは時間に応じて省略し、8分で生成経路を優先します。
+通常は詳細ページも含めて説明します。Optional detailは時間超過時の予備であり、省略を前提にはしません。
+品質・ビットレートの選択はプロポーザルで予告した設計判断として必ず話します。
 -->
 
 ---
@@ -942,7 +951,7 @@ if let connection = videoOutput.connection(with: .video),
 
 <div class="kicker">CONFIG</div>
 
-# 上り回線に合わせて、配信品質を選ぶ
+# 配信開始前に、上り回線に合う単一品質を選ぶ
 
 ```swift
 let profile: (CGSize, Int) = switch quality {
@@ -961,8 +970,10 @@ case .low:    (.init(width: 480, height: 854),    900_000)
 
 <div class="source">LiveSegmentRecorder.Config.resolved / AutoStreamingQualityResolver</div>
 
+<div class="bottom-claim">開始前に1品質を選ぶ。配信途中の自動画質切替（ABR）は行わない</div>
+
 <!--
-[Optional detail: 時間が厳しい場合は省略]
+[本編必須: 品質・ビットレートの選択]
 
 個人アプリではNWPathと小さなprobe PUTから、high、medium、lowの1品質を配信開始前に選びます。
 途中でrenditionを切り替えるABRではなく、端末の上り回線に合わせた開始時の選択です。
@@ -999,7 +1010,7 @@ videoOutput.videoSettings = [
 DataOutputからは未圧縮映像のpixel bufferを受け取ります。
 H.264への圧縮はAVAssetWriterInputのoutputSettingsが担当します。
 HighはApple SDKで指定できるH.264 profileの名前です。
-公開サンプルは説明しやすい1.5 Mbps固定です。個人アプリは上り回線を優先し、品質設定ごとに0.9、1.6、2.5 Mbpsから選びます。
+公開サンプルは説明しやすい1.5 Mbps固定です。個人アプリは上り回線を優先し、品質設定ごとに0.9、1.5、2.5 Mbpsから選びます。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
@@ -1096,7 +1107,7 @@ contentTypeのmpeg4MovieはMP4というcontainerの種類、outputFileTypeProfil
 名前は似ていますが競合する設定ではありません。
 
 このdelegate methodを実装すると通常のファイル書き込みは抑止され、Writerがsegment Dataをcallbackします。
-各propertyの意味と2秒境界はChapter 04で詳しく見ます。
+各propertyの意味と2秒境界はChapter 03で詳しく見ます。
 preferredTimescaleに 600 を指定した場合、1秒は 600/600 となり、1/600秒単位の細かい時間を表現できるようになります。
 
 [Sources]
@@ -1214,7 +1225,7 @@ guard CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
 CaptureSessionが動いていても、Writerへ渡すのは配信中だけです。
 CMSampleBufferのDataがreadyでない場合も早期returnし、Writerの状態遷移を単純に保ちます。
-Writerが受け取れないときにframeを貯めない判断は、Chapter 06で説明します。
+Writerが受け取れないときにframeを貯めない判断は、Chapter 05で説明します。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
@@ -1229,7 +1240,7 @@ Writerが受け取れないときにframeを貯めない判断は、Chapter 06�
 <div class="append-pipeline">
   <div><span>DataOutput delegate</span><b>captureOutput</b></div>
   <i>→</i>
-  <div><span>Chapter 03</span><b>時刻を補正</b></div>
+  <div><span>Writerへ渡す前</span><b>時刻を補正</b></div>
   <i>→</i>
   <div><span>CoreMedia</span><b>CMReadySampleBuffer</b></div>
   <i>→</i>
@@ -1484,18 +1495,18 @@ playlistのEXTINFには設定値の2秒ではなく、AVAssetSegmentReportが返
 
 <div class="kicker">PUBLIC SAMPLE · SEGMENT DURATION</div>
 
-# 実測durationを使い、取れなければ2秒
+# 実durationの反映：サンプルで実装済み
 
 <div class="duration-compare">
   <div class="duration-side sample">
-    <span>REPORT</span>
-    <b>video track duration</b>
-    <small>EXTINFへ実際の長さ。とくに最後のsegmentは2秒にならないので必要</small>
+    <span>公開サンプル · 実装済み</span>
+    <b>実durationをEXTINFへ</b>
+    <small>reportが無効・未取得の場合だけ2秒</small>
   </div>
   <div class="duration-side production">
-    <span>FALLBACK</span>
-    <b>config.segmentSeconds</b>
-    <small>無効・未取得なら2.0</small>
+    <span>MomentNow · 現状</span>
+    <b>2秒固定で送信</b>
+    <small>改善案：同じ実durationの取り込みを適用</small>
   </div>
 </div>
 
@@ -1729,7 +1740,8 @@ MomentNowの書き込み処理は3段階です。
 S3へPUTするための署名付きURLを受け取り、segment本体を保存し、成功したあとにだけplaylistへ載せます。
 
 MomentNowではpresign API、S3 PUT、commit API、CloudFrontが担当します。
-公開サンプルではMacのHTTPサーバーが保存とplaylist更新を担当します。S3自体はHLSの必須要素ではありません。
+commitは今回選んだ責務配置です。HLSに必須のAPIではなく、公開サンプルのようにiOS側でplaylistと公開順を管理する構成も可能です。
+公開サンプルはiOSがplaylist本文を生成し、MacのHTTPサーバーが受け取ったファイルを保存します。S3自体はHLSの必須要素ではありません。
 
 [Sources]
 - MomentNow-Lambda/src/presign.ts
@@ -1847,7 +1859,7 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
 <div class="bottom-claim warning">segment PUTが失敗したら、そのsegmentをplaylistへ載せない</div>
 
 <!--
-[Optional detail: 時間が厳しい場合は省略]
+[本編必須: アップロード失敗時の扱い]
 
 サンプルアプリは各PUTを最大3回試します。
 segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publisherのerrorとして残します。
@@ -1874,7 +1886,10 @@ segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publis
   <span>completion</span><code>2, 1, 3</code><b>≠</b><span>playback</span><code>1, 2, 3</code>
 </div>
 
-<div class="bottom-claim warning">連続したseqまでだけを公開する「公開済み境界」が安全</div>
+<div class="publication-status">
+  <p><b>MomentNowの現状</b><span>sequence順へ整列。欠番は待たない</span></p>
+  <p><b>改善案 · 未実装</b><span>欠番を待ち、連続した範囲だけ公開</span></p>
+</div>
 
 <!--
 [Optional detail: 時間が厳しい場合は省略]
@@ -1903,7 +1918,7 @@ iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをs
 <div class="bottom-claim compact">S3 / CloudFrontでの設定</div>
 
 <!--
-[Optional detail: 時間が厳しい場合は省略]
+[本編必須: キャッシュ制御]
 
 playlistは同じURLの内容が増えるためキャッシュさせません。
 initとm4sは一度置いたら変えず長期cacheし、PlayerのRange requestには206で返します。個人アプリもobjectの可変性で方針を分けます。
@@ -1929,14 +1944,15 @@ class: chapter
 [Timing checkpoint: 30:00]
 
 最後に、iOS上のcallback、Task、URLSessionを1本のライブ配信として整理します。
-焦点は、AVFoundationを止めずにネットワークの遅さを吸収する境界です。
+焦点は、メディア処理をHTTP待ちから切り離す境界です。
+Writerが受け取れない問題と、生成済みsegmentが送信待ちになる問題を分けて説明します。
 -->
 
 ---
 
 <div class="kicker">CALLBACK TO TASK</div>
 
-# AVFoundationのcallbackから、HTTPを待つTaskへ渡す
+# メディア処理を、HTTP待ちから切り離す
 
 <div class="async-boundary-flow">
   <div class="async-boundary-stage">
@@ -1966,7 +1982,7 @@ class: chapter
   <span><b>AsyncThrowingStream</b> = callbackとTaskをつなぐ通路</span>
 </div>
 
-<div class="bottom-claim">メディア処理はHTTPを待たない。公開Taskは順番を守って待つ</div>
+<div class="bottom-claim warning">サンプルの送信待ちに上限はない。送信が生成より遅いとsegmentが滞留する</div>
 
 <!--
 AVAssetWriterDelegateはwritingQueue上で呼ばれます。
@@ -1974,13 +1990,16 @@ callbackではHLSFragmentをAsyncThrowingStreamへ渡してすぐ戻り、次の
 HLSFragmentはinitializationまたはmediaのDataと付随情報を表す、サンプルアプリ内の値です。
 AsyncThrowingStreamは同期callbackから届く値を、Task側がfor awaitで順番に読める形へ変換します。
 HTTP処理はHLSStreamPublisherのTaskでawaitします。
+AsyncThrowingStreamは既定の無制限bufferで作り、Publisherは各fragmentのHTTP処理を順番に待っています。
+この分離でCapture callbackのHTTP待ちは避けられますが、継続的に上り回線が遅いと送信待ちDataと遅延が増えます。
+次のページではWriter側のdropと、送信側に残る改善課題を区別します。
 -->
 
 ---
 
 <div class="kicker">BACKPRESSURE DECISION</div>
 
-# 詰まったWriterを待たず、映像・音声を落とす
+# Writerの詰まりと、送信待ちは別の問題
 
 <div class="drop-timeline">
   <div class="drop-lane"><b>Capture</b><span>video 1</span><span>audio 1</span><span>video 2</span><span>audio 2</span></div>
@@ -1988,16 +2007,19 @@ HTTP処理はHLSStreamPublisherのTaskでawaitします。
 </div>
 
 <div class="drop-choice">
-  <div class="wait-choice"><span>待って貯める</span><b>古い映像が残り、遅延が増える</b></div>
-  <div class="drop-choice-current"><span>待たずに落とす</span><b>映像のカクつき／音声の欠けと引き換えに、現在へ追いつく</b></div>
+  <div class="wait-choice"><span>Writer側 · 実装済み</span><b>受け取れないCMSampleBufferをdrop<br>映像のカクつき・音声の欠けを許容</b></div>
+  <div class="drop-choice-current"><span>送信側 · 今後の改善</span><b>送信待ち量に上限を設ける<br>上限超過時の停止判断を追加</b></div>
 </div>
 
-<div class="bottom-claim warning">この実装では <code>appendImmediately == false</code> なら、そのCMSampleBufferをdrop</div>
+<div class="bottom-claim warning">Writer側のdropでは、生成済みsegmentの送信待ちは減らない</div>
 
 <!--
 VideoとAudioのDataOutputは一定間隔でCMSampleBufferをpushし続けます。
 Writerが受け取れずappendImmediatelyがfalseを返した場合、この実装ではbufferを保留せずreturnします。
-古い映像・音声をqueueへ貯めるとライブ遅延とメモリ使用量が増えるため、映像のカクつきや音声の欠けを許容して現在へ追いつく設計です。
+Writer側では受け入れ待ちのbufferを保留せず、映像のカクつきや音声の欠けを許容しています。
+これは生成前のCMSampleBufferに対する判断で、生成済みsegmentの送信待ちは減らしません。
+サンプルには送信待ち量の上限や上限超過時の停止判断は未実装です。今後の改善として分けて示します。
+ライブ遅延全体や継続的な帯域不足を、このdropだけで解消できるわけではありません。
 appendImmediatelyがthrowした場合はWriterの失敗としてstreamをerrorで閉じます。
 
 [Sources]
@@ -2064,7 +2086,7 @@ Recorder.stopがcapture、Writer、streamを順に閉じ、PublisherがENDLIST�
 
 <div class="kicker">PUBLIC DEMO → PRODUCTION</div>
 
-# 個人アプリでは、HLSの外側に4つの制御を足す
+# MomentNowで採用した4つの運用制御
 
 <div class="production-additions">
   <div><b>AUTH</b><span>user / group ownership</span></div>
@@ -2073,7 +2095,7 @@ Recorder.stopがcapture、Writer、streamを順に閉じ、PublisherがENDLIST�
   <div><b>DELIVERY</b><span>CloudFront / ticket / status</span></div>
 </div>
 
-<div class="bottom-claim">AVAssetWriterの後ろを差し替えれば、同じiOS pipelineを使える</div>
+<div class="bottom-claim">commit APIは必須ではない。サンプルはiOSでplaylistと公開順を管理する</div>
 
 <!--
 iosdc2026HLSSampleはMacを小さなobject serverとして使います。
@@ -2081,6 +2103,8 @@ iosdc2026HLSSampleはMacを小さなobject serverとして使います。
 
 サンプルから個人アプリへ足すものです。
 認証、署名URL、playlist競合制御、CDN配信。どれも重要ですが、映像の再エンコードではありません。
+4つすべてがHLSの必須構成という意味ではなく、MomentNowの用途に合わせて採用した構成です。
+公開順もiOS側で制御できます。今回のサーバー側commitはplaylist更新時の競合制御もまとめた責務配置であり、唯一の正解とは位置づけません。
 
 [Sources]
 - iosdc2026HLSSample/README.md
@@ -2149,7 +2173,8 @@ CameraとMicの入力をWriterへ渡してHLS用Dataを生成し、segment単位
 公開サンプルは、そのうちAVFoundationの生成処理を読みやすくした教材です。
 
 ここまでが本編です。次のページで締めます。
-約3分の余裕は、デモ操作や説明の間に使えます。補足は本編に含めません。
+チェックポイントは練習用の仮目安であり、約3分の余裕が実測で確認できているわけではありません。
+デモ込みで35〜37分を通し練習の目標とし、所要時間は実測で判断します。補足は本編に含めません。
 -->
 
 ---

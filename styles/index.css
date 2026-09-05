@@ -5834,6 +5834,23 @@ body,
 }
 
 
+.publication-status {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  font-size: 24px;
+}
+
+.publication-status p {
+  display: flex;
+  gap: 24px;
+  margin: 12px 0;
+}
+
+.publication-status b {
+  color: var(--accent-primary);
+  min-width: 260px;
+}
+
 @media (max-width: 900px) {
   .slidev-layout {
     padding: 48px 64px 42px;
