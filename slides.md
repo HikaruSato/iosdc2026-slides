@@ -972,7 +972,7 @@ case .low:    (.init(width: 480, height: 854),    900_000)
 
 <div class="kicker">INPUT FORMAT → VIDEO ENCODE</div>
 
-# Cameraの未圧縮映像を、AVAssetWriterがH.264へ圧縮
+# 未圧縮映像を、WriterでH.264へ圧縮
 
 <div class="format-bridge">
   <div class="format-node raw"><span>Capture</span><b>未圧縮映像</b><small>video frame</small></div>
@@ -980,7 +980,7 @@ case .low:    (.init(width: 480, height: 854),    900_000)
   <div class="format-node encoded"><span>Writer</span><b>H.264 High</b><small>圧縮された映像</small></div>
 </div>
 
-<div class="term-definition compact"><b>H.264 High</b><span>AVFoundationで指定する、H.264の圧縮profile名</span></div>
+<div class="video-profile-note"><b>High</b><span>H.264の圧縮profile名</span></div>
 
 ```swift
 videoOutput.videoSettings = [
@@ -1063,14 +1063,12 @@ HighはApple SDKで指定できるH.264 profileの名前です。
 
 <div class="kicker">URL-LESS HLS WRITER · iOS 26+</div>
 
-# URLなしのAVAssetWriterを、Apple HLS profileで作る
+# HLS用のAVAssetWriterを構成する
 
 <div class="writer-setup-layout">
 
 ```swift
-let writer = AVAssetWriter(
-    contentType: .mpeg4Movie
-)
+let writer = AVAssetWriter(contentType: .mpeg4Movie)
 writer.outputFileTypeProfile = .mpeg4AppleHLS
 writer.preferredOutputSegmentInterval = .init(
     seconds: 2, preferredTimescale: 600
@@ -1080,14 +1078,14 @@ writer.delegate = self
 ```
 
 <div class="writer-segment-output">
-  <div class="writer-shape"><b>AVAssetWriter</b><span>HLS profile · URLなし</span></div>
+  <b>AVAssetWriter</b>
   <i>→ delegate →</i>
   <div class="writer-data-stack"><span>initialization Data</span><span>separable Data</span></div>
 </div>
 
 </div>
 
-<div class="bottom-claim">MP4形式を選び、Apple HLS profileでsegment Dataをdelegate出力する</div>
+<div class="bottom-claim">URLへ書き込まず、delegateへsegment Dataを出す</div>
 
 <!--
 このサンプルのWriterコードはiOS 26以上が対象です。
@@ -1120,33 +1118,26 @@ let videoInput = AVAssetWriterInput(
     mediaType: .video,
     outputSettings: videoSettings()
 )
-let audioInput = AVAssetWriterInput(
-    mediaType: .audio,
-    outputSettings: audioSettings()
-)
-
 self.videoReceiver = writer.inputReceiver(
     for: videoInput
-)
-self.audioReceiver = writer.inputReceiver(
-    for: audioInput
 )
 ```
 
 <div class="receiver-connection">
-  <div class="receiver-row video"><span>video CMSampleBuffer</span><b>videoReceiver</b><code>H.264 Input</code></div>
-  <div class="receiver-row audio"><span>audio CMSampleBuffer</span><b>audioReceiver</b><code>AAC Input</code></div>
-  <i>↓ attached to ↓</i>
+  <div class="receiver-row video"><span>Video / H.264</span><b>videoReceiver</b></div>
+  <div class="receiver-row audio"><span>Audio / AAC</span><b>audioReceiver</b></div>
+  <i>↓ Inputを接続 ↓</i>
   <strong>AVAssetWriter</strong>
 </div>
 
 </div>
 
-<div class="bottom-claim"><code>inputReceiver(for:)</code>はiOS 26+。Inputを接続し、CMSampleBufferの入口を返す</div>
+<div class="bottom-claim">Videoを代表例として表示。Audioも同じ手順でReceiverを保持する</div>
 
 <!--
 AVAssetWriterInputには、VideoならH.264、AudioならAACなどのencode設定を渡します。
 inputReceiver(for:)は、そのInputをWriterへ接続すると同時に、CMSampleBufferを書き込むReceiverを返します。
+画面ではVideo側を示しています。Audio側もmediaTypeとoutputSettingsを替え、同じ手順でaudioReceiverへ保持します。
 
 これはiOS 26以上のSampleBufferReceiver APIです。
 従来のwriter.add(input)とinput.append(sampleBuffer)に相当する接続と書き込みを、Receiver経由で行います。
@@ -1284,7 +1275,7 @@ CMReadySampleBufferとappendImmediatelyもiOS 26以上のAPIです。
     <code>.initialization</code><i>→</i><b>HLSFragment.initialization</b><i>→</i><strong>init.mp4</strong>
   </div>
   <div class="fragment-route media">
-    <code>.separable</code><i>→</i><b>HLSFragment.media(sequence, …)</b><i>→</i><strong>seg/000001.m4s</strong>
+    <code>.separable</code><i>→</i><b>HLSFragment.media</b><i>→</i><strong>seg/000001.m4s</strong>
   </div>
 </div>
 
@@ -1295,9 +1286,7 @@ case .initialization:
 case .separable:
     segmentIndex += 1
     continuation.yield(.media(
-        sequence: segmentIndex,
-        data: segmentData,
-        duration: duration
+        sequence: segmentIndex, data: segmentData, duration: duration
     ))
 }
 ```
@@ -1324,24 +1313,31 @@ HLSSegmentRecorderはDataをHLSFragmentへ変換するところまでを担当�
 
 <div class="kicker">MINIMUM IMPLEMENTATION ORDER</div>
 
-# HLS用Dataが出るまでの、最小実装手順
+# HLS生成の8ステップ
 
 <div class="generation-lifecycle">
-  <div><b>01</b><span><strong>Captureを構成</strong>Camera / MicをSessionへ追加</span></div>
-  <div><b>02</b><span><strong>DataOutputを接続</strong>delegateとserial queueを指定</span></div>
-  <div><b>03</b><span><strong>Writerを構成</strong>HLS profileと約2秒の設定</span></div>
-  <div><b>04</b><span><strong>Receiverを保持</strong>Video / Audio InputをWriterへ接続</span></div>
-  <div><b>05</b><span><strong>最初のVideoで開始</strong><code>start()</code> → <code>startSession</code></span></div>
-  <div><b>06</b><span><strong>時刻を補正してappend</strong><code>appendImmediately</code></span></div>
-  <div><b>07</b><span><strong>delegateでDataを受信</strong>initialization → separable</span></div>
-  <div><b>08</b><span><strong>停止時にflush</strong><code>finishWriting</code>で最後のData</span></div>
+  <div class="generation-phase">
+    <h2>準備</h2>
+    <div><b>01</b><span><strong>Captureを構成</strong>Camera / MicをSessionへ追加</span></div>
+    <div><b>02</b><span><strong>DataOutputを接続</strong>delegateとserial queueを指定</span></div>
+    <div><b>03</b><span><strong>Writerを構成</strong>HLS profileと約2秒の設定</span></div>
+    <div><b>04</b><span><strong>Receiverを保持</strong>Video / Audio Inputを接続</span></div>
+  </div>
+  <div v-click class="generation-phase execution">
+    <h2>実行・停止</h2>
+    <div><b>05</b><span><strong>最初のVideoで開始</strong><code>start()</code> → <code>startSession</code></span></div>
+    <div><b>06</b><span><strong>時刻を補正してappend</strong><code>appendImmediately</code></span></div>
+    <div><b>07</b><span><strong>delegateでDataを受信</strong>initialization → separable</span></div>
+    <div><b>08</b><span><strong>停止時にflush</strong><code>finishWriting</code>で最後のData</span></div>
+  </div>
 </div>
 
-<div class="bottom-claim">この順序で、Camera / Micからinit.mp4とm4s相当のDataを逐次取り出せる</div>
+<div class="bottom-claim">次は、05・06の開始時刻と時刻補正を詳しく見る</div>
 
 <!--
-ここまでの実装順を1枚にまとめます。
+ここまでの実装順を、準備と実行・停止に分けてまとめます。
 CaptureSessionとDataOutput、HLS設定済みWriter、InputとReceiverを用意します。
+クリックで右側の実行・停止を表示します。
 最初のvideo frameでWriterのsessionを開始し、同じ時刻補正をVideoとAudioへ適用してappendします。
 Writer delegateから最初にinitialization Data、その後にseparable Dataが届きます。
 停止時はfinishWritingまで待つことで、最後の短いsegmentも受け取れます。
@@ -1470,18 +1466,18 @@ class: formula-slide
 
 <div class="kicker">ONE DELTA</div>
 
-# 時刻補正は、全CMSampleBufferへの平行移動
+# 時刻補正は、全サンプルの平行移動
 
 <div class="formula-large">
   <span>delta</span>
   <b>=</b>
-  <code>10s − firstVideoPTS</code>
+  <span class="formula-expression">10s − firstVideoPTS</span>
 </div>
 
 <div class="formula-large secondary">
   <span>adjustedPTS</span>
   <b>=</b>
-  <code>sourcePTS + delta</code>
+  <span class="formula-expression">sourcePTS + delta</span>
 </div>
 
 <!--
@@ -1917,33 +1913,24 @@ URLには保存先と有効期限が署名されているため、アプリへAW
 
 <div class="kicker">INIT ONCE · MEDIA REPEATS</div>
 
-# initは1回、mediaは約2秒ごとに同じ順序で公開
+# mediaは、PUT後にcommitを追加
+
+```swift
+let url = try await api.presign(kind: kind, seq: seq)
+try await api.put(to: url, data: data)
+```
 
 <div class="publish-code-pair">
   <div>
     <span>INITIALIZATION · 1回</span>
-
-```swift
-let url = try await api.presign(
-    kind: "init", seq: nil
-)
-try await api.put(
-    to: url, data: initData
-)
-```
+    <code class="publish-parameters">kind: "init", seq: nil</code>
+    <b class="publish-result">PUT成功で完了</b>
   </div>
   <div>
     <span>MEDIA · 約2秒ごと</span>
-
-```swift
-let url = try await api.presign(
-    kind: "segment", seq: seq
-)
-try await api.put(
-    to: url, data: segmentData
-)
-try await api.commit(seq: seq)
-```
+    <code class="publish-parameters">kind: "segment", seq: seq</code>
+    <b class="publish-result">PUT成功後に追加</b>
+    <code class="publish-commit">try await api.commit(seq: seq)</code>
   </div>
 </div>
 
@@ -1951,6 +1938,7 @@ try await api.commit(seq: seq)
 
 <!--
 最初のinitialization Dataは1配信で一度だけ保存します。
+上の2行は共通処理です。kindとseqは下段のように切り替え、dataにはinitDataまたはsegmentDataを渡します。
 media Dataは約2秒ごとに、seqに対応する署名付きURLを取得してPUTします。
 保存成功後にcommitし、サーバーへplaylistへ載せてよいseqを通知します。
 -->
@@ -2015,9 +2003,10 @@ segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publis
 # upload完了順と、再生順は一致しないことがある
 
 <div class="race-lanes">
-  <div class="race-row"><b>seg 1</b><span class="race-bar slow">upload 1</span><em>commit 1</em></div>
-  <div class="race-row"><b>seg 2</b><span class="race-bar fast">upload 2</span><em class="early">commit 2</em></div>
-  <div class="race-row"><b>seg 3</b><span class="race-bar medium">upload 3</span><em>commit 3</em></div>
+  <div class="race-time-axis">時間 →</div>
+  <div class="race-row"><b>seg 1</b><div class="race-track"><span class="race-bar medium">upload 1</span><em>commit 1</em></div></div>
+  <div class="race-row"><b>seg 2</b><div class="race-track"><span class="race-bar fast">upload 2</span><em class="early">commit 2</em></div></div>
+  <div class="race-row"><b>seg 3</b><div class="race-track"><span class="race-bar slow">upload 3</span><em>commit 3</em></div></div>
 </div>
 
 <div class="order-equation">
@@ -2030,6 +2019,7 @@ segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publis
 [Optional detail: 時間が厳しい場合は省略]
 
 upload処理は待機中に完了順が入れ替わる可能性があります。
+図は左から右を時間とし、seg 2、seg 1、seg 3の順でPUTが完了する例です。各commitは、そのsegmentのPUT完了後に始めます。
 iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをseq順へ並べ直しますが、欠番を待つ契約ではありません。
 より安全にするなら、サーバーが連続したseqまでの「公開済み境界」を管理します。
 
