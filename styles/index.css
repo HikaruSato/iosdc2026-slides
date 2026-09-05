@@ -3060,6 +3060,94 @@ body,
   white-space: nowrap;
 }
 
+.timing-overview .timing-intro {
+  color: var(--accent-primary);
+  font-size: 30px;
+  font-weight: 800;
+  margin: 0 0 10px;
+  opacity: 1 !important;
+}
+
+.timing-overview .timing-context {
+  font-size: 26px;
+  margin: 0;
+}
+
+.timing-comparison {
+  border-collapse: collapse;
+  margin-top: 24px;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.timing-comparison caption {
+  color: var(--muted);
+  font-size: 23px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.timing-comparison th,
+.timing-comparison td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 22px;
+  text-align: left;
+}
+
+.timing-comparison thead th {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.timing-comparison th:first-child {
+  width: 24%;
+}
+
+.timing-comparison tbody th {
+  font-size: 28px;
+}
+
+.timing-comparison td {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.timing-comparison td:last-child {
+  color: var(--accent-primary);
+}
+
+.timing-comparison td span {
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 24px;
+  margin-left: 10px;
+}
+
+.timing-overview .bottom-claim {
+  font-size: 26px;
+  margin-top: 20px;
+}
+
+.timing-overview .timing-detail-note {
+  color: var(--muted);
+  font-size: 22px;
+  margin: 14px 0 0;
+  text-align: center;
+}
+
+.timing-priming ul {
+  margin: 24px 0;
+}
+
+.timing-priming li + li {
+  margin-top: 16px;
+}
+
+.timing-priming .lead {
+  line-height: 1.5 !important;
+  margin: 26px 0;
+}
+
 .sync-diagram {
   align-items: center;
   display: grid;

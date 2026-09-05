@@ -88,16 +88,16 @@ class: speaker-intro
   <div><b>WHY</b><span>なぜ端末内HLSを作ろうと思ったのか</span></div>
   <div><b>01</b><span>HLSがライブになる仕組み</span></div>
   <div><b>02</b><span>端末内でHLSを生成</span></div>
-  <div><b>03</b><span>映像と音声の時間軸調整</span></div>
-  <div><b>04</b><span>約2秒の動画断片を生成</span></div>
-  <div><b>05</b><span>playlistの更新</span></div>
-  <div><b>06</b><span>配信の完了</span></div>
+  <div><b>03</b><span>約2秒の動画断片を生成</span></div>
+  <div><b>04</b><span>playlistの更新</span></div>
+  <div><b>05</b><span>配信の完了</span></div>
 </div>
 
 <!--
 最初に、なぜ端末内でHLSを作ろうと思ったのか、そのきっかけと実装できるまでの経緯を話します。
 続いてHLSがライブになる仕組みを確認し、動くサンプルアプリを見ます。
-その後、カメラとマイクの入力、時刻補正、fMP4生成、保存とplaylist公開、停止時の完了管理まで順番に追います。
+その後、カメラとマイクの入力、fMP4生成、保存とplaylist公開、停止時の完了管理まで順番に追います。
+Writerへ渡す時刻の扱いは、生成処理の中で短く触れます。
 -->
 
 ---
@@ -1332,7 +1332,7 @@ HLSSegmentRecorderはDataをHLSFragmentへ変換するところまでを担当�
   </div>
 </div>
 
-<div class="bottom-claim">次は、05・06の開始時刻と時刻補正を詳しく見る</div>
+<div class="bottom-claim">05・06では、最初の映像を基準にWriterへ渡す時刻を調整する</div>
 
 <!--
 ここまでの実装順を、準備と実行・停止に分けてまとめます。
@@ -1342,10 +1342,61 @@ CaptureSessionとDataOutput、HLS設定済みWriter、InputとReceiverを用意�
 Writer delegateから最初にinitialization Data、その後にseparable Dataが届きます。
 停止時はfinishWritingまで待つことで、最後の短いsegmentも受け取れます。
 
-次の章では、このうち5番と6番の時間軸を詳しく見ます。
+このうち5番と6番の時刻の扱いを、次の数値例で確認します。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+class: timing-overview
+---
+
+<div class="kicker">WRITER TIMING</div>
+
+# Writerへ渡す時刻の調整
+
+<p class="timing-intro">時刻の扱いは、Apple公式サンプルの方針を採用</p>
+<p class="timing-context">最初の映像を10秒に置き、映像と音声を同じ量だけずらす</p>
+
+<table class="timing-comparison">
+  <caption>両方から90秒を引いても、0.02秒の時間差は変わらない</caption>
+  <thead><tr><th></th><th>調整前の時刻</th><th>Writerへ渡す時刻</th></tr></thead>
+  <tbody>
+    <tr><th>映像</th><td>100.00<span>秒</span></td><td>10.00<span>秒</span></td></tr>
+    <tr><th>音声</th><td>100.02<span>秒</span></td><td>10.02<span>秒</span></td></tr>
+  </tbody>
+</table>
+
+<div class="bottom-claim warning">今回の検証：調整を外すと、生成ファイルに映像・音声が入らなかった</div>
+<p class="timing-detail-note">Writerの開始位置は10秒のまま、時刻調整だけを外した場合。詳細は補足へ</p>
+
+<div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter</div>
+
+<!--
+[Timing checkpoint: 20:00]
+
+時刻の扱いは、Apple公式サンプルの方針を参考にしています。
+この実装では、最初の映像を基準に、Writer用の開始位置へ時刻をずらします。
+例えば映像100.00秒、音声100.02秒なら、両方から90秒を引いて10.00秒と10.02秒にします。
+映像と音声には同じ調整を適用して、元の時間差を保ちます。
+
+同じCaptureSessionから届く映像と音声は、もともと共通の時計上にあります。
+別々の時計を同期させたり、発生した音ズレを修復したりする処理ではありません。
+Appleが示す一括の時刻移動を採用し、Capture入力では最初のvideo PTSから移動量を決めています。
+10秒はAACのprimingを扱うために選んだ余白です。再生開始まで10秒待つ意味はありません。
+ここは省略すると動かなくなった点でもあります。私の検証では、Writerの開始位置を10秒のままにして時刻調整だけを外すと、生成ファイルに映像・音声が入りませんでした。
+具体的にはstartSessionとinitialSegmentStartTimeを10秒のまま、元のCapture timestampのCMSampleBufferをappendした場合の結果です。
+今回の設定で経験した症状として紹介します。開始位置も変更した別構成や、AVAssetWriter全般で時刻調整が必須だと断定するものではありません。
+initialization segmentに映像・音声の本体が入らない通常の仕様とは区別します。
+本編は約1分でこの例を説明し、10秒の背景やPTS・DTSのコードは補足へ回します。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avcapturesession/synchronizationclock
+- https://developer.apple.com/videos/play/wwdc2020/10011/?time=976
+- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- 発表者による時刻調整無効化の検証結果（Writer開始位置とinitialSegmentStartTimeは10秒のまま）
 -->
 
 ---
@@ -1356,203 +1407,13 @@ class: chapter
 <div class="chapter-no">03</div>
 <div class="chapter-rule"></div>
 
-# 映像と音声を、<br>同じ時間軸でWriterへ渡す
-<p>Camera / Mic → CMSampleBuffer → one shared timeline</p>
-
-<!--
-[Timing checkpoint: 20:00]
-
-生成パイプラインがつながったので、Receiverへ渡す直前の時刻補正を詳しく見ます。
-映像と音声を同じ時間軸へ載せることが、次の難所です。
--->
-
----
-
-<div class="kicker">SESSION START</div>
-
-# 最初のvideo frameで、全trackを開始
-
-<div class="start-sequence">
-  <div class="sequence-item audio"><span>audio CMSampleBuffer</span><small>まだappendしない</small></div>
-  <div class="sequence-line"></div>
-  <div class="sequence-item video"><span>first video frame</span><small>writer.start()</small></div>
-  <div class="sequence-line active"></div>
-  <div class="sequence-item session"><span>startSession(at: 10s)</span><small>video + audio共通</small></div>
-</div>
-
-```swift
-guard output === videoOutput else { return }
-guard !didStartSession, let writer else { return }
-```
-
-<!--
-Writerのsessionは最初のvideo frameで開始します。
-先にaudioが届いても、共通の基準が決まるまではappendしません。
--->
-
----
-
-<div class="kicker">INITIAL START TIME</div>
-
-# Writerを10秒から始め、先行するAudioの余白を作る
-
-<div class="start-time-visual">
-  <div class="start-empty"><span>0</span><i></i><i></i><i></i><i></i></div>
-  <div class="start-marker"><b>10.00s</b><span>first adjusted video frame</span></div>
-  <div class="start-media"><i></i><i></i><i></i><span>media timeline</span></div>
-</div>
-
-```swift
-private let startTimeOffset = CMTime(value: 10, timescale: 1)
-writer.initialSegmentStartTime = startTimeOffset
-```
-
-<div class="bottom-claim warning">Audioは最初のvideoより少し前の時刻を持つことがある。10秒は、その分を正の時刻へ置く余白</div>
-
-<!--
-[Optional detail: 時間が厳しい場合は省略]
-
-個人アプリのHLS Writerも初期segmentの開始を10秒へ設定します。
-AAC encoderのprimingを含むAudioは、最初のvideo frameより少し前の時刻を持つことがあります。
-Apple公式サンプルと同様にWriter timelineを10秒から始めると、そのAudioを負の時刻にせず置ける余白ができます。
-10秒という値自体はHLS仕様ではなく、Capture PTSの補正は、このWriter設定と入力CMSampleBufferを一致させるために行います。
-
-[Sources]
-- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
-- https://developer.apple.com/videos/play/wwdc2020/10011/
--->
-
----
-
-<div class="kicker">PTS = CMSAMPLEBUFFER TIMESTAMP</div>
-
-# CMSampleBufferの撮影時刻を、Writerの開始時刻へ移す
-
-<div class="capture-clock-note">
-  <b>58342.31は何秒目？</b>
-  <span>配信開始を0とした経過秒ではなく、CaptureSessionの同期時計が示す位置</span>
-</div>
-
-<div class="dual-axis">
-  <div class="axis-row">
-    <b>Capture PTS<small>CaptureSessionの同期時計</small></b>
-    <div class="axis-line"><span class="axis-value source-value">58342.31</span><i></i><i></i><i></i><em>…</em></div>
-  </div>
-  <div class="axis-transform">− firstVideoPTS + 10s</div>
-  <div class="axis-row target">
-    <b>Writer timeline<small>配信内の時刻</small></b>
-    <div class="axis-line"><span class="axis-value target-value">10.00</span><i></i><i></i><i></i><em>…</em></div>
-  </div>
-</div>
-
-<div class="bottom-claim warning">10秒起点は今回のWriter設定。HLS仕様の固定値ではない</div>
-
-<!--
-Capture PTSは配信開始からの経過時間ではありません。
-AVCaptureSessionのsynchronizationClockが、すべてのcapture outputのCMSampleBufferに共通のtimebaseを与えます。
-その時計の0は配信開始ではないため、最初のframeでも58342.31のような大きな値から始まることがあります。
-ここで重要なのは値そのものではなく、VideoとAudioが同じ時計上にあり、frame間の時間差を比較できることです。
-一方、Writerは10秒起点へ明示的に揃えるため、両者を変換します。
-
-[Sources]
-- https://developer.apple.com/documentation/avfoundation/avcapturesession/synchronizationclock
-- https://developer.apple.com/documentation/coremedia/cmsamplebuffer/presentationtimestamp
--->
-
----
-layout: center
-class: formula-slide
----
-
-<div class="kicker">ONE DELTA</div>
-
-# 時刻補正は、全サンプルの平行移動
-
-<div class="formula-large">
-  <span>delta</span>
-  <b>=</b>
-  <span class="formula-expression">10s − firstVideoPTS</span>
-</div>
-
-<div class="formula-large secondary">
-  <span>adjustedPTS</span>
-  <b>=</b>
-  <span class="formula-expression">sourcePTS + delta</span>
-</div>
-
-<!--
-補正はレート変更ではなく、全CMSampleBufferへの平行移動です。
-最初のvideo PTSからdeltaを一度だけ決め、その後は映像と音声へ同じ値を足します。
--->
-
----
-
-<div class="kicker">COPY TIMING</div>
-
-# 映像・音声は変えず、時刻情報だけを補正
-
-```swift {3-8}
-let timingInfos = try sampleTimingInfos().map { info in
-    var adjusted = info
-    adjusted.presentationTimeStamp =
-        info.presentationTimeStamp + offset
-    if info.decodeTimeStamp.isValid {
-        adjusted.decodeTimeStamp = info.decodeTimeStamp + offset
-    }
-    return adjusted
-}
-let copied = try CMSampleBuffer(copying: self, withNewTiming: timingInfos)
-```
-
-<div class="code-caption">PTSと、有効なDTS（decode timestamp）を同じ量だけ動かす</div>
-
-<!--
-[Optional detail: 時間が厳しい場合は省略]
-
-CMSampleBufferの映像・音声データはそのままに、timing infoを差し替えたコピーを作ります。
-PTSだけでなく、frameをdecodeする順番の時刻であるDTSも、有効な場合は同じ量だけ補正します。
--->
-
----
-
-<div class="kicker">A/V SYNC</div>
-
-# VideoとAudioを別々に補正しない
-
-<div class="sync-diagram">
-  <div class="sync-source">
-    <div><b>video</b><span>58342.31</span></div>
-    <div><b>audio</b><span>58342.29</span></div>
-  </div>
-  <div class="sync-delta">same delta</div>
-  <div class="sync-target">
-    <div><b>video</b><span>10.00</span></div>
-    <div><b>audio</b><span>9.98</span></div>
-  </div>
-</div>
-
-<div class="bottom-claim">VideoとAudioの相対差を保ち、先行するAudioも10秒より少し前へ置く</div>
-
-<!--
-音声用の開始時刻を別に決めると、A/Vの相対差が変わります。
-videoから決めたdeltaを両方へ適用し、同期を保ちます。
--->
-
----
-layout: center
-class: chapter
----
-
-<div class="chapter-no">04</div>
-<div class="chapter-rule"></div>
-
 # 映像と音声を、<br>約2秒のfMP4へ分ける
 <p>Four HLS settings and segment boundaries</p>
 
 <!--
-[Timing checkpoint: 24:00]
+[Timing checkpoint: 21:00]
 
-Captureの時計が揃ったので、次は約2秒のfragment境界を作るHLS固有設定を見ます。
+Writerへ渡す時刻の扱いを確認したので、次は約2秒のfragment境界を作るHLS固有設定を見ます。
 -->
 
 ---
@@ -1722,14 +1583,14 @@ layout: center
 class: chapter
 ---
 
-<div class="chapter-no">05</div>
+<div class="chapter-no">04</div>
 <div class="chapter-rule"></div>
 
 # 保存できたsegmentだけを、<br>playlistへ公開する
 <p>Save bytes first, then make the segment visible to viewers</p>
 
 <!--
-[Timing checkpoint: 28:00]
+[Timing checkpoint: 25:00]
 
 ここから保存と公開の順序を見ます。
 まずコード名を使わず、segment本体が保存されてからplaylistへ載るまでを捉えます。
@@ -2058,14 +1919,14 @@ layout: center
 class: chapter
 ---
 
-<div class="chapter-no">06</div>
+<div class="chapter-no">05</div>
 <div class="chapter-rule"></div>
 
 # 生成を止めず、<br>配信の完了まで待つ
 <p>AVFoundation callback → Swift Task → final playlist</p>
 
 <!--
-[Timing checkpoint: 33:00]
+[Timing checkpoint: 30:00]
 
 最後に、iOS上のcallback、Task、URLSessionを1本のライブ配信として整理します。
 焦点は、AVFoundationを止めずにネットワークの遅さを吸収する境界です。
@@ -2146,9 +2007,9 @@ appendImmediatelyがthrowした場合はWriterの失敗としてstreamをerror�
 
 ---
 
-<div class="kicker">STOP IN THE SAME CLOCK</div>
+<div class="kicker">WRITER FINISH</div>
 
-# 開始と終了を、同じ補正後timelineで閉じる
+# 最後に渡した時刻で、Writerを終了する
 
 <div class="stop-flow">
   <div><b>lastAdjustedPTS</b><span>最後にappendした時刻</span></div>
@@ -2264,10 +2125,10 @@ class: closing
 
 <div class="kicker">TAKEAWAYS</div>
 
-# HLSライブ配信は、4つの順序で成立する
+# 端末内で生成したHLSを、撮影中から公開する
 
 <div class="takeaway-grid">
-  <div><b>01</b><span><strong>時刻 · Clock</strong>Capture PTSをWriterのtimelineへ移す</span></div>
+  <div><b>01</b><span><strong>生成 · Writer</strong>Camera / Micの入力からHLS用Dataを作る</span></div>
   <div><b>02</b><span><strong>区切り · Boundary</strong>IDRとsegment intervalをそろえる</span></div>
   <div><b>03</b><span><strong>公開 · Upload</strong>Dataを保存してからplaylistへ載せる</span></div>
   <div><b>04</b><span><strong>終了 · Finish</strong>全送信とENDLISTの公開を待つ</span></div>
@@ -2276,17 +2137,19 @@ class: closing
 <div class="takeaway-path"><b>端末内生成</b><span>AVCaptureSession → DataOutput → Receiver → AVAssetWriterDelegate</span></div>
 
 <!--
-[Timing checkpoint: 37:30]
+[Timing checkpoint: 34:30]
 
 まとめです。
 AVAssetWriterDelegateでiPhoneからfMP4を逐次取り出し、保存できたsegmentだけをplaylistへ追加します。
-Clock、Boundary、Upload、Finishの順序が揃って初めて、録画ではなくライブ配信になります。
+CameraとMicの入力をWriterへ渡してHLS用Dataを生成し、segment単位で保存・公開していきます。
+撮影停止後も最後のsegmentとENDLISTの公開まで待つところが、配信全体の完了です。
 
 実装の接続は、AVCaptureSessionからDataOutput、Receiver、AVAssetWriterDelegateまでの1本です。
 
 公開サンプルは、そのうちAVFoundationの生成処理を読みやすくした教材です。
 
 ここまでが本編です。次のページで締めます。
+約3分の余裕は、デモ操作や説明の間に使えます。補足は本編に含めません。
 -->
 
 ---
@@ -2304,4 +2167,162 @@ class: closing thanks-slide
 <!--
 ありがとうございました。
 サンプルアプリは、このURLで公開しています。
+-->
+
+---
+layout: center
+class: chapter
+---
+
+<div class="kicker">APPENDIX</div>
+<div class="chapter-rule"></div>
+
+# 補足：Writerの時刻処理
+<p>開始の基準 / 10秒の理由 / 時刻を変えるコード</p>
+
+<!--
+ここからは質問や実装時の参照用の補足です。40分の本編には含めません。
+Apple公式サンプルの時刻移動の方針と、今回のCapture入力に合わせた処理を説明します。
+-->
+
+---
+
+<div class="kicker">APPENDIX · SESSION START</div>
+
+# 最初の映像を基準にWriterを開始
+
+<div class="start-sequence">
+  <div class="sequence-item audio"><span>先に届いた音声</span><small>まだappendしない</small></div>
+  <div class="sequence-line"></div>
+  <div class="sequence-item video"><span>最初の映像</span><small>writer.start()</small></div>
+  <div class="sequence-line active"></div>
+  <div class="sequence-item session"><span>10秒を開始位置に</span><small>映像・音声に共通</small></div>
+</div>
+
+```swift
+guard output === videoOutput else { return }
+guard !didStartSession, let writer else { return }
+try writer.start()
+let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+writer.startSession(atSourceTime: startTimeOffset)
+timeOffsetDelta = startTimeOffset - pts
+```
+
+<div class="source">HLSSegmentRecorder.startWriterIfNeeded（エラー処理・状態更新は省略）</div>
+
+<!--
+今回のCapture入力では、最初のvideo frameでWriterのsessionを開始します。
+そのframeのPTSから一度だけtimeOffsetDeltaを決めます。
+先にaudioが届いても、基準が決まるまではappendしません。
+callbackの到着順と、AAC圧縮に伴うprimingは別の話です。10秒の余白は次のページで説明します。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+class: timing-priming
+---
+
+<div class="kicker">APPENDIX · AAC PRIMING</div>
+
+# 10秒は、音声圧縮のための余白
+
+<ul>
+  <li>AACは圧縮の都合で、先頭に準備用の音声（priming）を加える</li>
+  <li>Apple HLSでは、その分だけ音声の時刻を前へずらして補償する</li>
+</ul>
+
+<p class="lead">映像・音声の開始位置を後ろへずらし、<br>音声の時刻が負にならないようにする</p>
+
+```swift
+private let startTimeOffset = CMTime(value: 10, timescale: 1)
+writer.initialSegmentStartTime = startTimeOffset
+```
+
+<div class="bottom-claim">10秒はAppleが示す設定例。再生開始まで10秒待つ意味ではない</div>
+<div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter（16:16以降）</div>
+
+<!--
+AAC encoderは、正しくencode / decodeするために先頭へprimingを加えます。
+Apple HLS profileはedit listを使わず、音声のbaseMediaDecodeTimeをpriming分だけ前へ移して補償します。
+この値は符号なし整数なので、負にできません。そのためAppleは両方のmedia timeを同じ量だけ後ろへ移すことを勧めています。
+initialSegmentStartTimeも同じ開始位置に合わせます。
+10秒はHLS仕様の固定値ではありません。Appleのmediafilesegmenterと同じ値を選べる、という説明に合わせています。
+HLSの再生は最初の映像の提示時刻から始まるため、この設定による10秒の待ち時間は発生しません。
+マイクのcallbackが映像より先に届くこととは区別して説明します。
+
+[Sources]
+- https://developer.apple.com/videos/play/wwdc2020/10011/?time=976
+- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+layout: center
+class: formula-slide
+---
+
+<div class="kicker">APPENDIX · ONE DELTA</div>
+
+# 時刻補正は、全サンプルの平行移動
+
+<div class="formula-large">
+  <span>delta</span>
+  <b>=</b>
+  <span class="formula-expression">10s − firstVideoPTS</span>
+</div>
+
+<div class="formula-large secondary">
+  <span>adjustedPTS</span>
+  <b>=</b>
+  <span class="formula-expression">sourcePTS + delta</span>
+</div>
+
+<div class="code-caption">PTS：映像や音声を提示する時刻。移動量は最初の映像で一度だけ決める</div>
+
+<!--
+CaptureのPTSは配信開始からの経過時間ではなく、CaptureSessionの共通の時計上の位置です。
+最初のvideo PTSからdeltaを一度だけ決め、その後は映像と音声の全CMSampleBufferへ同じ値を足します。
+再生速度や映像と音声の時間差は変えません。
+映像と音声それぞれの最初のsampleを別々に10秒へ合わせると、元の時間差を変えてしまいます。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avcapturesession/synchronizationclock
+- https://developer.apple.com/documentation/coremedia/cmsamplebuffer/presentationtimestamp
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">APPENDIX · COPY TIMING</div>
+
+# 映像・音声は変えず、時刻情報だけを補正
+
+```swift
+let timingInfos = try sampleTimingInfos().map { info in
+    var adjusted = info
+    adjusted.presentationTimeStamp =
+        info.presentationTimeStamp + offset
+    if info.decodeTimeStamp.isValid {
+        adjusted.decodeTimeStamp = info.decodeTimeStamp + offset
+    }
+    return adjusted
+}
+let copied = try CMSampleBuffer(
+    copying: self, withNewTiming: timingInfos
+)
+```
+
+<div class="code-caption">PTSと、有効なDTS（decode timestamp）を同じ量だけ動かす</div>
+<div class="source">HLSSegmentRecorder.swift: offsettingTiming（時刻コピー部分の抜粋）</div>
+
+<!--
+CMSampleBufferの映像・音声データはそのままに、timing infoを差し替えたコピーを作ります。
+PTSだけでなく、frameをdecodeする時刻であるDTSも、有効な場合は同じ量だけ補正します。
+サンプルのoffsettingTimingでは、この後にoutputPresentationTimeStampも同じ量だけ補正しています。
+ここは処理の抜粋で、エラー処理とoutput PTSの更新は省略しています。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
