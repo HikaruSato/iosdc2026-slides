@@ -131,7 +131,7 @@ HLSなら撮影中から短いsegmentを順次アップロードでき、同じp
 
 <div class="kicker">ORIGIN STORY · IMPLEMENTATION</div>
 
-# macOS向けAppleサンプルが、iPhone実装の突破口になった
+# [macOS向けAppleサンプルが<br>とても参考になった](https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming)
 
 <div class="implementation-story origin-story">
   <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>再生できるHLSとして<br>実用まで至らず</small></div>
