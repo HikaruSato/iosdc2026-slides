@@ -397,6 +397,51 @@ class: statement
 
 ---
 
+<div class="kicker">PERMISSIONS · PUBLIC SAMPLE</div>
+
+# 撮影・保存・接続に必要な権限
+
+<table class="permissions-table">
+  <thead><tr><th>権限</th><th>このサンプルでの用途</th><th>許可するタイミング</th></tr></thead>
+  <tbody>
+    <tr><th>カメラ</th><td>配信映像の撮影</td><td>プレビュー開始時</td></tr>
+    <tr><th>マイク</th><td>配信音声の録音</td><td>プレビュー開始時</td></tr>
+    <tr><th>写真へ追加</th><td>完成したMP4の保存</td><td>配信開始前</td></tr>
+    <tr><th>ローカル<br>ネットワーク</th><td>同じLANのMacへ接続</td><td>最初のLAN接続時</td></tr>
+  </tbody>
+</table>
+
+<div class="bottom-claim">Info.plistに用途を記載。写真は「追加のみ」を要求する</div>
+
+<!--
+[本編必須: デモ前の権限確認]
+
+初回デモの前に、カメラ・マイク・写真への追加を許可します。許可済みなら毎回ダイアログは出ません。
+このSampleはカメラとマイクをプレビュー開始前に、写真への追加を配信開始前に確認します。
+どれかが拒否されている場合は配信を開始しません。拒否した権限は設定アプリから許可します。
+写真は完成したMP4を追加するだけなので、既存写真の読み取り権限は要求しません。
+
+Info.plistの対応:
+- カメラ: NSCameraUsageDescription。AVCaptureDevice.requestAccess(for: .video)。
+- マイク: NSMicrophoneUsageDescription。AVCaptureDevice.requestAccess(for: .audio)。
+- 写真への追加: NSPhotoLibraryAddUsageDescription。PHPhotoLibrary.requestAuthorization(for: .addOnly)。
+- 同じLANのMacへの通信: NSLocalNetworkUsageDescription。実際にLANへ接続するときにシステムが許可を求めます。
+
+ローカルネットワーク権限は、MacのLAN内IPへHTTP接続するデモで必要です。
+公開ngrok URLやS3への通常のインターネット通信に、この権限が一律に必要という意味ではありません。
+拒否するとLANの接続確認やPUTに失敗するため、デモ前に接続確認も済ませます。
+NSAllowsLocalNetworkingというATS設定と、ユーザーが許可するローカルネットワーク権限は別です。
+
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/Info.plist
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleStreamViewModel.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/PhotoVideoSaver.swift
+- https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy
+- https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CocoaKeys.html
+-->
+
+---
+
 <div class="kicker">LIVE DEMO · PUBLIC SAMPLE</div>
 
 # 公開サンプルアプリを動かす
@@ -422,7 +467,7 @@ class: statement
   </div>
 </div>
 
-<div class="demo-repository">github.com/HikaruSato/iosdc2026HLSSample</div>
+<div class="demo-repository">停止後：写真アプリでフルHD・HEVCの保存動画を再生</div>
 
 <!--
 [Timing checkpoint: 05:00]
@@ -432,6 +477,8 @@ iPhoneはHLSを生成してMacへHTTP PUTし、MacのViewer（Playerを使う再
 
 Safariでplaylistが更新される間の追従再生を見せ、同じplaylist URLをiOSのAVPlayerへ渡した再生確認にも触れます。
 Macにinit.mp4、m4s、playlistが残ることと、停止後も同じURLで再生できることを確認します。
+事前に写真への追加権限を許可します。配信停止後は「保存しました」を確認し、写真アプリで端末に残ったMP4を再生します。
+配信はH.264・720×1280、保存動画はHEVC（H.265）・1080×1920です。撮影中から別々のWriterで生成しています。
 この説明はライブデモ成功時にも省略しません。
 
 会場Wi-Fiが不安定な場合はライブ操作を省略し、次の5枚で同じ流れを説明します。ライブデモが成功した場合は、この5枚を省略します。
@@ -587,9 +634,8 @@ class: demo-step viewer-demo-step
 </div>
 
 <div class="demo-observe-line">
-  <span>STREAM <b>stream-...</b></span>
-  <span>SEGMENTS <b>1 → 2 → 3</b></span>
-  <span>PLAYLIST <b>/streams/.../playlist.m3u8</b></span>
+  <span>配信中 <b>segmentが増える</b></span>
+  <span>停止後 <b>写真へMP4を自動保存</b></span>
 </div>
 
 <!--
@@ -598,6 +644,8 @@ class: demo-step viewer-demo-step
 MacのViewerは1秒ごとにstream一覧を取得し、更新時刻が最も新しい配信を選びます。
 SafariはネイティブHLS、それ以外は同梱したhls.jsで再生します。
 同じplaylist URLをiOSのAVPlayerへ渡し、WebとiOSの両方で再生を確認します。
+停止後もHLSは同じURLで再生でき、写真ライブラリにはフルHD・HEVCのMP4が自動保存されます。
+このMP4は端末で別途生成した動画で、配信用segmentを結合したものではありません。
 
 [Sources]
 - iosdc2026HLSSample/server/static/app.js
@@ -739,9 +787,9 @@ AVAssetWriterは映像と音声を圧縮し、HLSで使えるfMP4のDataを返�
 
 ---
 
-<div class="kicker">HLSSegmentRecorder · SIX SDK OBJECTS</div>
+<div class="kicker">HLS PATH · SIX SDK OBJECTS</div>
 
-# 6つのSDK objectを、2つのdelegateで接続
+# HLS生成は、6つのSDK objectを接続する
 
 <div class="recorder-object-map">
   <div class="recorder-object-group capture">
@@ -772,39 +820,12 @@ AVAssetWriterは映像と音声を圧縮し、HLSで使えるfMP4のDataを返�
 <!--
 HLSSegmentRecorderは、CameraやMicを直接エンコードする巨大なAPIではありません。
 Capture側の3 objectとWriter側の3 objectを、2種類のdelegate callbackでつないでいます。
+ここではHLS側の接続に絞っています。保存用のLocalVideoWriterは同じCapture callbackから別のWriterへ入力します。
 
 左ではCaptureSessionがDataOutputへCMSampleBufferを流します。
 図中のVideoDataOutputとAudioDataOutputは、AVCaptureVideoDataOutputとAVCaptureAudioDataOutputの短縮表記です。
 中央ではReceiverからWriterへそのbufferを渡します。
 右ではWriter delegateからfMP4のDataを受け取ります。
--->
-
----
-
-<div class="kicker">AUDIO SESSION</div>
-
-# カメラ構成前に、録音用AudioSessionを有効化
-
-```swift
-let audio = AVAudioSession.sharedInstance()
-try audio.setCategory(
-    .playAndRecord,
-    mode: .videoRecording,
-    options: [.defaultToSpeaker, .allowBluetoothHFP]
-)
-try audio.setActive(true)
-```
-
-<div class="contract-compare">
-  <div><span>Capture</span><b>camera + microphone</b></div>
-  <div><span>Route</span><b>speaker + Bluetooth HFP</b></div>
-</div>
-
-<!--
-[Optional detail: 時間が厳しい場合は省略]
-
-録音権限だけではなく、AVAudioSessionのcategoryとmodeを先に設定します。
-Bluetooth HFPを含む入力routeを許可しつつ、端末側の再生はspeakerを既定にしています。
 -->
 
 ---
@@ -833,6 +854,18 @@ Bluetooth HFPを含む入力routeを許可しつつ、端末側の再生はspeak
 <!--
 CaptureSessionへ背面CameraとMicをDeviceInputとして追加し、出口にはVideoDataOutputとAudioDataOutputを追加します。
 
+カメラ構成前には、録音権限の許可に加えてAVAudioSessionのcategoryとmodeを設定します。
+Sampleでは次の設定です。これはマイク権限を要求するAPIではなく、録音時の振る舞いの設定です。
+
+```swift
+let audio = AVAudioSession.sharedInstance()
+try audio.setCategory(.playAndRecord, mode: .videoRecording,
+                      options: [.defaultToSpeaker])
+try audio.setActive(true)
+```
+
+MomentNowではさらに.allowBluetoothHFPを指定し、Bluetooth HFPの入力routeも許可しています。
+
 MovieFileOutputなら完成した録画ファイルを受け取れますが、ライブ中にWriterへ少しずつ渡せません。
 DataOutputを使うことで、videoは約1 frame、audioは短いblockごとのCMSampleBufferを撮影中から受け取れます。
 
@@ -852,25 +885,27 @@ DataOutputを使うことで、videoは約1 frame、audioは短いblockごとの
   <div class="capture-branch-targets">
     <div class="preview"><span>画面表示</span><b>PreviewLayer</b><small>配信中も表示</small></div>
     <div class="hls"><span>ライブ配信</span><b>H.264 / AAC → fMP4</b><small>約2秒ごとにupload</small></div>
-    <div class="local"><span>ローカル保存</span><b>HEVC / AAC → MP4</b><small>MomentNowのみ · 1080 × 1920</small></div>
+    <div class="local"><span>ローカル保存</span><b>HEVC / AAC → MP4</b><small>1080 × 1920<br>映像 5 Mbps</small></div>
   </div>
 </div>
 
 <div class="local-recording-result">
-  <span>recording.mp4</span><i>→</i><b>元動画としてupload</b><i>+</i><b>設定時は写真ライブラリへ保存</b>
+  <div><span>Sample</span> → <b>停止後、写真へ自動保存</b><br><span>MomentNow</span> → <b>元動画upload ＋ 設定時に写真へ保存</b></div>
 </div>
 
-<div class="bottom-claim">公開サンプルはPreview + HLS。MomentNowは保存用Writerも並行する</div>
+<div class="bottom-claim">同じ撮影データを、配信用と保存用の2つのWriterへ渡す</div>
 
 <!--
-[Optional detail: 時間が厳しい場合は省略]
-
 PreviewはAVCaptureVideoPreviewLayerへ同じCaptureSessionを接続するため、配信中も画面表示を続けられます。
-MomentNowでは同じ元のCMSampleBufferを、HLS用とローカルMP4用の2つのAVAssetWriterへ分岐します。
-停止時に両Writerをfinishし、ローカルMP4は元動画として別途uploadします。設定が有効なら写真ライブラリへも保存します。
+公開サンプルもMomentNowも、同じ元のCMSampleBufferをHLS用とローカルMP4用の2つのAVAssetWriterへ分岐します。
+SampleはLocalVideoWriterが保存用Writerを担当し、1080×1920・HEVC Main・映像5 Mbps・AAC 96 kbpsでMP4を作ります。
+Sampleは停止後、完成したMP4を写真へ自動保存します。写真への追加権限は配信開始前に必須です。
+MomentNowは元動画として別途uploadし、設定が有効なら写真へも保存します。SampleではMP4をサーバーへ送りません。
+HLS側には時刻を補正したコピー、保存側には元の時刻を持つコピーを渡し、各Writerの受け入れ可否を独立して判定します。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/CameraPreviewView.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamView.swift
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveStreamViewModel.swift
@@ -924,9 +959,9 @@ AppleのAPIはVideoのcallback queueにserial queueを要求し、frameの到着
 # 縦向きは、video connectionへ90度を指定
 
 <div class="orientation-visual">
-  <div class="landscape-frame">1280 × 720</div>
+  <div class="landscape-frame">1920 × 1080</div>
   <div class="rotate-arrow">↻ <span>90°</span></div>
-  <div class="portrait-frame">720 × 1280</div>
+  <div class="portrait-frame">1080 × 1920</div>
 </div>
 
 ```swift
@@ -940,6 +975,8 @@ if let connection = videoOutput.connection(with: .video),
 [Optional detail: 時間が厳しい場合は省略]
 
 出力サイズはportraitで指定し、video connectionへ90度のrotation angleを設定します。
+Sampleはhd1920x1080で撮影し、保存用Writerは1080×1920、配信用Writerは720×1280へ圧縮します。
+図はCaptureの出力サイズです。実装では90度の回転を設定できない場合、開始エラーにします。
 配信中の向き変更は扱わず、portrait 90度で固定します。
 -->
 
@@ -1226,7 +1263,7 @@ Writerが受け取れないときにframeを貯めない判断は、Chapter 05�
 
 <div class="kicker">CAPTURE CALLBACK → RECEIVER · iOS 26+</div>
 
-# callbackごとに、Receiverへ1つずつ渡す
+# HLS側は、補正したbufferをReceiverへ渡す
 
 <div class="append-pipeline">
   <div><span>DataOutput</span><b>callback</b></div>
@@ -1262,6 +1299,8 @@ appendImmediatelyは同期的に受け入れを試します。
 trueならappend成功、falseならWriterがまだ受け入れられないため、そのCMSampleBufferを待たずに落とします。throwならWriter自体の失敗としてAsyncThrowingStreamをerrorで閉じます。
 待つappendではなくappendImmediatelyを選ぶ理由は、Camera callbackへ古いframeを貯めないためです。
 CMReadySampleBufferとappendImmediatelyもiOS 26以上のAPIです。
+ここに示すコードはHLS側です。同じcallback内でLocalVideoWriter.appendも呼び、保存側には元の時刻のコピーを渡します。
+HLS側のdropや失敗によるreturnはHLS側のメソッド内に留め、保存側へのappendは続けます。
 
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
@@ -1360,7 +1399,7 @@ class: timing-overview
 # Writerへ渡す時刻の調整
 
 <p class="timing-intro">時刻の扱いは、Apple公式サンプルの方針を採用</p>
-<p class="timing-context">最初の映像を10秒に置き、映像と音声を同じ量だけずらす</p>
+<p class="timing-context">HLS側：最初の映像を10秒に置き、音声も同じ量だけずらす</p>
 
 <table class="timing-comparison">
   <caption>同じ90秒を引くので、時間差は変わらない</caption>
@@ -2023,16 +2062,16 @@ appendImmediatelyがthrowした場合はWriterの失敗としてstreamをerror�
 
 <div class="kicker">WRITER FINISH</div>
 
-# 最後に渡した時刻で、Writerを終了する
+# HLS用Writerを、最後に渡した時刻で終了する
 
 <div class="stop-flow">
-  <div><b>lastAdjustedPTS</b><span>最後にappendした時刻</span></div>
+  <div><b>lastAdjustedPTS</b><span>最後に受け入れたPTS</span></div>
   <i>→</i>
-  <div><b>endSession</b><span>media rangeを閉じる</span></div>
+  <div><b>endSession</b><span>範囲を閉じる</span></div>
   <i>→</i>
-  <div><b>markAsFinished</b><span>video / audio</span></div>
+  <div><b>Receiver.finish</b><span>video / audio</span></div>
   <i>→</i>
-  <div><b>finishWriting</b><span>最後のsegmentをflush</span></div>
+  <div><b>finishWriting</b><span>最後のDataを出力</span></div>
 </div>
 
 ```swift
@@ -2045,6 +2084,7 @@ if lastAdjustedPTS.isValid {
 [Optional detail: 時間が厳しい場合は省略]
 
 終了時刻も補正後のPTSを使います。
+ここはHLS用Writerの終了手順です。保存用WriterもReceiverをfinishしてfinishWritingの完了を待ち、completedかつ映像・音声が揃っている場合だけ写真保存へ進みます。
 finishWritingによって最後のsegmentがdelegateへ届く可能性があるため、stopはその完了まで待ちます。
 -->
 
@@ -2052,21 +2092,24 @@ finishWritingによって最後のsegmentがdelegateへ届く可能性がある�
 
 <div class="kicker">DRAIN BEFORE FINISH</div>
 
-# 撮影停止後も、最後のsegment公開まで待つ
+# 停止後は、HLS公開と写真保存の完了を待つ
 
 <div class="drain-lanes">
-  <div><b>1 Recorder</b><span>capture停止 → finishWriting</span><small>最後のfragmentが出る</small></div>
+  <div><b>1 Recorder</b><span>capture停止<br>両Writerをfinish</span><small>HLS Data / MP4を確定</small></div>
   <i>→</i>
-  <div><b>2 Stream</b><span>continuation.finish()</span><small>fragment列を閉じる</small></div>
+  <div><b>2 写真保存</b><span>完成MP4 → 写真</span><small>HTTP完了を待たずに保存</small></div>
   <i>→</i>
-  <div class="hot"><b>3 Publisher</b><span>uploadTask.value</span><small>ENDLIST PUTまで待つ</small></div>
+  <div class="hot"><b>3 公開完了</b><span>uploadTask.value</span><small>ENDLIST PUTまで待つ</small></div>
 </div>
 
-<div class="bottom-claim">「撮影停止」と「配信完了」は、同じ瞬間ではない</div>
+<div class="bottom-claim">HLSの送信結果と、端末への保存結果を別々に確認する</div>
 
 <!--
 SampleHLSStreamer.stopRecordingの順序です。
-Recorder.stopがcapture、Writer、streamを順に閉じ、PublisherがENDLIST付きplaylistをPUTするまでTaskを待ちます。
+Recorder.stopがcaptureを止め、HLS Writerとfragment streamを閉じ、保存用MP4を完成させます。
+MP4が完成したら写真保存を開始します。その間もPublisherのTaskは並行して送信を続けています。
+写真保存を待ったあと、uploadTask.valueで最後のsegmentとENDLIST公開まで待ちます。図の3は送信開始ではなく完了の確認です。
+写真への保存失敗時は完成MP4を保持し、再試行できます。HLSの送信に失敗していても、完成したMP4は写真へ保存します。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift

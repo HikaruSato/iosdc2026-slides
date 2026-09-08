@@ -580,6 +580,30 @@ body,
   text-align: right;
 }
 
+.slidev-layout .permissions-table {
+  width: 100%;
+  margin-top: 28px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 30px;
+  line-height: 1.4;
+}
+
+.slidev-layout .permissions-table th,
+.slidev-layout .permissions-table td {
+  padding: 15px 18px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.slidev-layout .permissions-table th:first-child {
+  width: 26%;
+}
+
+.slidev-layout .permissions-table thead {
+  color: var(--accent-primary);
+}
+
 .live-upload-strip {
   display: grid;
   gap: 8px;
