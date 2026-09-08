@@ -138,11 +138,11 @@ HLSなら撮影中から短いsegmentを順次アップロードでき、同じp
 # [macOS向けAppleサンプルが<br>とても参考になった](https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming)
 
 <div class="implementation-story origin-story">
-  <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>再生できるHLSとして<br>実用まで至らず</small></div>
+  <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>HLSとしての<br>実用まで至らず</small></div>
   <i>→</i>
-  <div class="reference"><span>Apple公式サンプル</span><b>正しい生成手順を確認</b><small>Writer設定 · 時刻補正<br>分割Dataの受け取り方</small></div>
+  <div class="reference"><span>Apple公式</span><b>生成手順を確認</b><small>Writer設定<br>時刻補正<br>Dataの受け取り</small></div>
   <i>→</i>
-  <div class="adapt"><span>iPhone local</span><b>HLS用Data生成に成功</b><small>Camera / Micから<br>短い動画を逐次生成</small></div>
+  <div class="adapt"><span>iPhone local</span><b>HLS生成に成功</b><small>カメラ・マイク<br>短い動画を生成</small></div>
   <i>→</i>
   <div class="product"><span>MomentNow</span><b>ライブ配信へ発展</b><small>撮影中からupload<br>playlistを更新</small></div>
 </div>
@@ -336,7 +336,7 @@ Playerはplaylistを再取得し、新しく見つけたsegmentを順に取得�
 
 <div class="kicker">FROM HLS TO THIS TALK</div>
 
-# 一般的には、サーバーが受信した映像をHLSへ変換する
+# HLSを作る場所を、サーバーからiPhoneへ
 
 <div class="architecture-compare">
   <div class="arch-row muted">
@@ -746,11 +746,11 @@ AVAssetWriterは映像と音声を圧縮し、HLSで使えるfMP4のDataを返�
 <div class="recorder-object-map">
   <div class="recorder-object-group capture">
     <span>CAPTURE</span>
-    <b>AVCaptureSession</b>
-    <div><code>AVCaptureVideoDataOutput</code><code>AVCaptureAudioDataOutput</code></div>
+    <b>CaptureSession</b>
+    <div><code>VideoData<wbr>Output</code><code>AudioData<wbr>Output</code></div>
   </div>
   <div class="recorder-object-arrow">
-    <code>captureOutput</code><i>→</i><small>CMSampleBuffer</small>
+    <span>delegate</span><i>→</i><small>撮影データ</small>
   </div>
   <div class="recorder-object-group writer">
     <span>WRITE</span>
@@ -758,22 +758,23 @@ AVAssetWriterは映像と音声を圧縮し、HLSで使えるfMP4のDataを返�
     <b>AVAssetWriter</b>
   </div>
   <div class="recorder-object-arrow">
-    <code>writer delegate</code><i>→</i><small>segment Data</small>
+    <span>delegate</span><i>→</i><small>HLS Data</small>
   </div>
   <div class="recorder-object-output">
     <span>RECORDER OUTPUT</span>
     <b>HLSFragment</b>
-    <small>initialization / media</small>
+    <small>init / media</small>
   </div>
 </div>
 
-<div class="bottom-claim">左から右へ、撮影データを「HLSとして保存できるData」へ変える</div>
+<div class="bottom-claim">撮影データを、HLSとして保存できるDataへ変える</div>
 
 <!--
 HLSSegmentRecorderは、CameraやMicを直接エンコードする巨大なAPIではありません。
 Capture側の3 objectとWriter側の3 objectを、2種類のdelegate callbackでつないでいます。
 
 左ではCaptureSessionがDataOutputへCMSampleBufferを流します。
+図中のVideoDataOutputとAudioDataOutputは、AVCaptureVideoDataOutputとAVCaptureAudioDataOutputの短縮表記です。
 中央ではReceiverからWriterへそのbufferを渡します。
 右ではWriter delegateからfMP4のDataを受け取ります。
 -->
@@ -879,26 +880,21 @@ MomentNowでは同じ元のCMSampleBufferを、HLS用とローカルMP4用の2�
 
 <div class="kicker">DATA OUTPUT DELEGATE</div>
 
-# delegateを設定すると、CMSampleBufferが届き始める
+# 映像と音声を、同じqueueで受け取る
 
 <div class="delegate-setup-layout">
 
 ```swift
-session.addOutput(videoOutput)
-session.addOutput(audioOutput)
-
 videoOutput.setSampleBufferDelegate(
-    self, queue: writingQueue
-)
+    self, queue: writingQueue)
 audioOutput.setSampleBufferDelegate(
-    self, queue: writingQueue
-)
+    self, queue: writingQueue)
 ```
 
 <div class="delegate-callback-flow">
   <div><b>VideoDataOutput</b><small>約1 frame</small></div>
   <div><b>AudioDataOutput</b><small>短いaudio block</small></div>
-  <i>↓</i>
+  <i>→</i>
   <code>serial writingQueue</code>
   <i>↓</i>
   <strong>captureOutput(_:didOutput:from:)</strong>
@@ -906,7 +902,7 @@ audioOutput.setSampleBufferDelegate(
 
 </div>
 
-<div class="bottom-claim">VideoとAudioを同じserial queueで受け取り、Writerの状態を1か所で更新する</div>
+<div class="bottom-claim">VideoとAudioを直列化し、Writerの状態を1か所で更新する</div>
 
 <!--
 DataOutputへdelegateとcallback queueを設定すると、撮影のたびにcaptureOutputが呼ばれます。
@@ -1129,9 +1125,9 @@ let videoInput = AVAssetWriterInput(
     mediaType: .video,
     outputSettings: videoSettings()
 )
-self.videoReceiver = writer.inputReceiver(
-    for: videoInput
-)
+self.videoReceiver =
+    writer.inputReceiver(
+        for: videoInput)
 ```
 
 <div class="receiver-connection">
@@ -1182,12 +1178,7 @@ Inputはsetup中のローカル変数で十分です。
   </div>
 </div>
 
-<div class="sample-term-grid">
-  <div><b>video CMSampleBuffer</b><span>カメラから届く約1 frame分</span></div>
-  <div><b>audio CMSampleBuffer</b><span>マイクから届く短い音声block</span></div>
-  <div><b>separable Data</b><span>約2秒分の映像・音声本体</span></div>
-  <div><b>initialization Data</b><span>再生開始に必要な設定</span></div>
-</div>
+<div class="bottom-claim">入力は小さなbuffer。出力は約2秒分の映像・音声</div>
 
 <!--
 CMSampleBufferはsegmentファイルではありません。Videoなら約1 frame分、Audioなら短い音声blockです。
@@ -1209,10 +1200,10 @@ AVAssetWriterが多数のCMSampleBufferをH.264とAACへ圧縮し、映像と音
 # Writerへ渡す前に、2つのguardで確認する
 
 <div class="guard-funnel">
-  <div class="guard-input">captureOutput(_:didOutput:from:)</div>
-  <div class="guard-step"><code>isWriting == true</code><span>配信中だけ</span></div>
-  <div class="guard-step"><code>CMSampleBufferDataIsReady</code><span>利用可能なbufferだけ</span></div>
-  <div class="guard-output">startWriterIfNeeded → append</div>
+  <div class="guard-input">captureOutput</div>
+  <div class="guard-step"><b>配信中か</b><span>isWriting</span></div>
+  <div class="guard-step"><b>Dataはreadyか</b><span>利用可能か確認</span></div>
+  <div class="guard-output">Writer開始<br>→ append</div>
 </div>
 
 ```swift
@@ -1235,23 +1226,25 @@ Writerが受け取れないときにframeを貯めない判断は、Chapter 05�
 
 <div class="kicker">CAPTURE CALLBACK → RECEIVER · iOS 26+</div>
 
-# 1回のcallbackで、1つのCMSampleBufferをReceiverへ渡す
+# callbackごとに、Receiverへ1つずつ渡す
 
 <div class="append-pipeline">
-  <div><span>DataOutput delegate</span><b>captureOutput</b></div>
+  <div><span>DataOutput</span><b>callback</b></div>
   <i>→</i>
   <div><span>Writerへ渡す前</span><b>時刻を補正</b></div>
   <i>→</i>
-  <div><span>CoreMedia</span><b>CMReadySampleBuffer</b></div>
+  <div><span>CoreMedia</span><b>Readyなbuffer</b></div>
   <i>→</i>
-  <div class="primary"><span>SampleBufferReceiver</span><b>appendImmediately</b></div>
+  <div class="primary"><span>Receiver</span><b>append</b></div>
 </div>
 
 ```swift
 let readySampleBuffer = CMReadySampleBuffer(
     unsafeBuffer: transferableSampleBuffer
 )
-let didAppend = try receiver.appendImmediately(readySampleBuffer)
+let didAppend = try receiver.appendImmediately(
+    readySampleBuffer
+)
 guard didAppend else { return }
 ```
 
@@ -1283,10 +1276,10 @@ CMReadySampleBufferとappendImmediatelyもiOS 26以上のAPIです。
 
 <div class="fragment-routing">
   <div class="fragment-route init">
-    <code>.initialization</code><i>→</i><b>HLSFragment.initialization</b><i>→</i><strong>init.mp4</strong>
+    <code>.initialization</code><i>→</i><b>init Data</b><i>→</i><strong>init.mp4</strong>
   </div>
   <div class="fragment-route media">
-    <code>.separable</code><i>→</i><b>HLSFragment.media</b><i>→</i><strong>seg/000001.m4s</strong>
+    <code>.separable</code><i>→</i><b>media Data</b><i>→</i><strong>seg/000001.m4s</strong>
   </div>
 </div>
 
@@ -1296,9 +1289,8 @@ case .initialization:
     continuation.yield(.initialization(segmentData))
 case .separable:
     segmentIndex += 1
-    continuation.yield(.media(
-        sequence: segmentIndex, data: segmentData, duration: duration
-    ))
+    continuation.yield(.media(sequence: segmentIndex,
+        data: segmentData, duration: duration))
 }
 ```
 
@@ -1371,7 +1363,7 @@ class: timing-overview
 <p class="timing-context">最初の映像を10秒に置き、映像と音声を同じ量だけずらす</p>
 
 <table class="timing-comparison">
-  <caption>両方から90秒を引いても、0.02秒の時間差は変わらない</caption>
+  <caption>同じ90秒を引くので、時間差は変わらない</caption>
   <thead><tr><th></th><th>調整前の時刻</th><th>Writerへ渡す時刻</th></tr></thead>
   <tbody>
     <tr><th>映像</th><td>100.00<span>秒</span></td><td>10.00<span>秒</span></td></tr>
@@ -1379,8 +1371,8 @@ class: timing-overview
   </tbody>
 </table>
 
-<div class="bottom-claim warning">今回の検証：調整を外すと、生成ファイルに映像・音声が入らなかった</div>
-<p class="timing-detail-note">Writerの開始位置は10秒のまま、時刻調整だけを外した場合。詳細は補足へ</p>
+<div class="bottom-claim warning">検証結果：時刻調整を外すと、映像・音声が入らなかった</div>
+<p class="timing-detail-note">検証条件：Writerの開始位置は10秒のまま<br>時刻調整だけを外した場合</p>
 
 <div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter</div>
 
@@ -1514,7 +1506,6 @@ playlistのEXTINFには設定値の2秒ではなく、AVAssetSegmentReportが返
 let duration = report?.trackReports
     .first { $0.mediaType == .video }?
     .duration.seconds
-
 guard let duration, duration.isFinite, duration > 0 else {
     return config.segmentSeconds
 }
@@ -1696,7 +1687,8 @@ initと最初のm4sが保存先に存在し、playlistへ最初のsegmentが載�
 var nextManifest = manifest
 nextManifest.addSegment(seq: seq, durationSec: durationSec)
 
-try await client.putPlaylist(streamId: streamId, text: nextManifest.text)
+try await client.putPlaylist(
+    streamId: streamId, text: nextManifest.text)
 manifest = nextManifest
 ```
 
@@ -1708,7 +1700,7 @@ manifest = nextManifest
   <div class="hot"><span>状態を確定</span><b>current = candidate</b></div>
 </div>
 
-<div class="bottom-claim">seqはsegment番号。iPhoneはplaylist本文を更新し、PUT成功後に状態を確定する</div>
+<div class="bottom-claim">playlistのPUT成功後に、アプリ内の状態を確定する</div>
 
 <!--
 サンプルのHLSManifestはseqをkeyにしてsegmentを保持し、表示時には必ず番号順にします。
@@ -1753,7 +1745,7 @@ commitは今回選んだ責務配置です。HLSに必須のAPIではなく、�
 
 <div class="kicker">S3 PRESIGNED PUT URL</div>
 
-# サーバーが、S3へPUTするための<br>署名付きURLを発行する
+# S3へのPUTを、署名付きURLで許可する
 
 <div class="choice-compare">
   <div class="choice muted"><span>DO NOT</span><b>AWS credentialを内包</b><small>漏えい範囲が広い</small></div>
@@ -1766,7 +1758,8 @@ commitは今回選んだ責務配置です。HLSに必須のAPIではなく、�
 ```swift
 var request = URLRequest(url: presignedURL)
 request.httpMethod = "PUT"
-request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+request.setValue(
+    contentType, forHTTPHeaderField: "Content-Type")
 request.httpBody = data
 ```
 
@@ -1958,31 +1951,30 @@ Writerが受け取れない問題と、生成済みsegmentが送信待ちにな�
   <div class="async-boundary-stage">
     <span>WRITING QUEUE · CALLBACK</span>
     <b>WriterのDataを受け取る</b>
-    <small>initialization / mediaを受け取り、すぐcallbackを返す</small>
-    <code>HLSSegmentRecorder</code>
+    <small>init / mediaを受け取り<br>すぐ戻る</small>
+    <code>Recorder</code>
   </div>
   <i>→</i>
   <div class="async-boundary-stage bridge">
     <span>BRIDGE</span>
     <b>Dataを順番に受け渡す</b>
-    <small>同期callbackを、非同期で読める列へ変換</small>
-    <code>AsyncThrowingStream&lt;HLSFragment&gt;</code>
+    <small>callbackの値を<br>非同期の列へ変換</small>
+    <code>AsyncThrowing<wbr>Stream</code>
   </div>
   <i>→</i>
   <div class="async-boundary-stage task">
     <span>SWIFT TASK</span>
     <b>HTTPをawaitする</b>
-    <small>PUT、playlist更新、retryを順番に実行</small>
-    <code>HLSStreamPublisher</code>
+    <small>PUTとplaylist更新を<br>順番に待つ</small>
+    <code>Publisher</code>
   </div>
 </div>
 
 <div class="async-boundary-types">
-  <span><b>HLSFragment</b> = init / mediaのDataを表す値</span><i>·</i>
-  <span><b>AsyncThrowingStream</b> = callbackとTaskをつなぐ通路</span>
+  <span><b>HLSFragment</b> = init / mediaのData</span>
 </div>
 
-<div class="bottom-claim warning">サンプルの送信待ちに上限はない。送信が生成より遅いとsegmentが滞留する</div>
+<div class="bottom-claim warning">送信待ちに上限なし。送信が遅いとsegmentが滞留する</div>
 
 <!--
 AVAssetWriterDelegateはwritingQueue上で呼ばれます。
@@ -2326,20 +2318,18 @@ CaptureのPTSは配信開始からの経過時間ではなく、CaptureSession�
 
 ```swift
 let timingInfos = try sampleTimingInfos().map { info in
-    var adjusted = info
-    adjusted.presentationTimeStamp =
-        info.presentationTimeStamp + offset
+    var t = info
+    t.presentationTimeStamp = t.presentationTimeStamp + offset
     if info.decodeTimeStamp.isValid {
-        adjusted.decodeTimeStamp = info.decodeTimeStamp + offset
+        t.decodeTimeStamp = t.decodeTimeStamp + offset
     }
-    return adjusted
+    return t
 }
 let copied = try CMSampleBuffer(
-    copying: self, withNewTiming: timingInfos
-)
+    copying: self, withNewTiming: timingInfos)
 ```
 
-<div class="code-caption">PTSと、有効なDTS（decode timestamp）を同じ量だけ動かす</div>
+<div class="code-caption">PTSと、有効なDTSを同じ量だけ動かす</div>
 <div class="source">HLSSegmentRecorder.swift: offsettingTiming（時刻コピー部分の抜粋）</div>
 
 <!--
