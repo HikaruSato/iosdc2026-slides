@@ -944,7 +944,7 @@ Sampleはhd1920x1080で撮影し、保存用Writerは1080×1920、配信用Write
  <div class="d-row"><div class="d-node blue"><span>Low · 480 × 854</span><b>0.9 Mbps</b></div><div class="d-node blue"><span>Medium · 720 × 1280</span><b>1.5 Mbps</b></div><div class="d-node blue"><span>High · 720 × 1280</span><b>2.5 Mbps</b></div></div>
  <div class="d-caption">Sampleは720 × 1280・1.5 Mbps固定</div>
 </div>
-<div class="bottom-claim">選んだ品質で配信する。配信途中の自動画質切替（ABR）は行わない</div>
+<div class="bottom-claim">選んだ品質で配信。配信途中の自動画質切替（ABR）は行わない。<br>(今回の構成ではできない)</div>
 
 <!--
 [本編必須: 品質・ビットレートの選択]
