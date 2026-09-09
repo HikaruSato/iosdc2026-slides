@@ -59,7 +59,7 @@ class: speaker-intro
       主に iOS / Android / Ruby on Rails のアプリ開発をやっています
     </div>
     <div class="speaker-intro-app">
-      <p><a href="https://apps.apple.com/jp/app/%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97%E5%8B%95%E7%94%BB%E5%85%B1%E6%9C%89-momentnow/id6759968148" style="color: var(--accent-primary); text-decoration: underline;">MomentNow</a> という「今この瞬間」の動画をHLSで配信し、<br>URLで共有できる iOSアプリ を個人開発してます</p>
+      <p><a href="https://apps.apple.com/jp/app/%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97%E5%8B%95%E7%94%BB%E5%85%B1%E6%9C%89-momentnow/id6759968148" style="color: var(--accent-primary); text-decoration: underline;">MomentNow</a> という「今この瞬間」の動画をHLSで配信し、URLで共有できる iOSアプリ を個人開発してます</p>
     </div>
   </div>
 
@@ -89,10 +89,10 @@ class: speaker-intro
 # 話すこと
 
 <div class="chapter-overview">
-  <div><b>WHY</b><span>なぜ端末内HLSを作ろうと思ったのか</span></div>
+  <div><b>WHY</b><span>なぜ端末内HLS生成をやろうと思ったのか</span></div>
   <div><b>01</b><span>HLSがライブになる仕組み</span></div>
   <div><b>02</b><span>端末内でHLSを生成</span></div>
-  <div><b>03</b><span>約2秒の動画断片を生成</span></div>
+  <div><b>03</b><span>動画断片の生成</span></div>
   <div><b>04</b><span>playlistの更新</span></div>
   <div><b>05</b><span>配信の完了</span></div>
 </div>
@@ -107,35 +107,29 @@ Writerへ渡す時刻の扱いは、生成処理の中で短く触れます。
 ---
 
 <div class="kicker">WHY</div>
-<div class="story-split">
-  <div>
-    <h1>撮影後のアップロードを待たずに、動画をURLで共有したい</h1>
-    <p class="lead">HLSなら、撮影中から小さくアップロードし、撮影後URLで再生できる</p>
-  </div>
-  <div class="why-files">
-    <div class="why-file large"><span>1ファイル</span><b>recording.mov</b><small>撮影後にまとめてupload</small></div>
-    <div class="why-divider">↓ 待ち時間をなくす</div>
-    <div class="why-segments">
-      <span>HLS</span>
-      <b>再生設定</b><b>短い動画 1</b><b>短い動画 2</b>
-      <small>撮影中から順次upload → 同じURLで共有</small>
-    </div>
-  </div>
+
+# 撮影とuploadを重ね、<br>共有までの待ち時間を短くする
+
+<div class="d">
+  <div class="d-lane d-axis-grid"><b>時間 →</b><span style="grid-column:2/5">撮影開始</span><span style="grid-column:10/14">撮影停止</span></div>
+  <div class="d-lane"><b>1ファイル</b><span class="d-bar" style="grid-column:2/10">撮影</span><span class="d-bar warn" style="grid-column:10/14">まとめてupload</span></div>
+  <div class="d-lane"><b>HLSの撮影</b><span class="d-bar blue" style="grid-column:2/10">撮影しながらsegmentを生成</span></div>
+  <div class="d-lane"><b>HLSの送信</b><span class="d-bar blue" style="grid-column:4/6">seg 1</span><span class="d-bar blue" style="grid-column:6/8">seg 2</span><span class="d-bar blue" style="grid-column:8/10">seg 3</span><span class="d-bar warn" style="grid-column:10/12">最後</span></div>
+  <div class="d-caption">模式図：撮影中に送信を進め、停止後の大きなuploadを減らす</div>
 </div>
+<div class="bottom-claim">同じplaylist URLで共有。停止後も最後の送信と終了処理は残る</div>
 
 <!--
 この実装のきっかけは、子どもの動画を家族へ送るときの待ち時間でした。
-1ファイルでは、撮影を終えて大きな動画をアップロードし終わるまで、共有URLを渡せません。
-
-HLSなら撮影中から短いsegmentを順次アップロードでき、同じplaylist URLを共有できます。
-撮影後の大きなアップロードを待たず、URLで動画を共有したい。それがHLSを使おうと思った理由です。
+1ファイルでは撮影後に大きな動画をuploadします。HLSなら撮影中からsegmentを順次uploadし、同じplaylist URLを共有できます。
+図は処理の重なりを示す模式図で、実測の所要時間ではありません。停止時にも最後のfragmentとENDLISTの公開が残るので、待ち時間が完全にゼロになるという説明にはしません。
 -->
 
 ---
 
 <div class="kicker">ORIGIN STORY · IMPLEMENTATION</div>
 
-# [macOS向けAppleサンプルが<br>とても参考になった](https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming)
+# [<span class="title-phrase">macOS向けAppleサンプルが</span><wbr><span class="title-phrase">とても参考になった</span>](https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming)
 
 <div class="implementation-story origin-story">
   <div class="attempt"><span>2025.03</span><b>AIで最初の試作</b><small>HLSとしての<br>実用まで至らず</small></div>
@@ -191,35 +185,17 @@ HLSでは、長い動画を短い断片へ分け、その再生順を示すplayl
 
 ---
 
-<div class="kicker">HLS LIVE IN ONE SENTENCE</div>
+<div class="kicker">HLS FILE REFERENCES</div>
 
-# HLSは、短い動画と<br><span class="accent-primary">更新されるplaylist</span>をHTTPで配る
+# playlistが、取得するファイルと再生順を示す
 
-<div class="playlist-model">
-  <div class="manifest-card">
-    <code>#EXTM3U</code>
-    <code>#EXT-X-MAP: init.mp4</code>
-    <code>#EXTINF: 2.000</code>
-    <code class="hot">seg/000001.m4s</code>
-    <code>#EXTINF: 2.000</code>
-    <code class="hot">seg/000002.m4s</code>
-  </div>
-  <div class="playlist-arrow">→</div>
-  <div class="segment-sequence">
-    <span class="init">init</span>
-    <span>01</span>
-    <span>02</span>
-    <span class="future">03</span>
-  </div>
+<div class="d d-link-map">
+  <div class="d-line">#EXT-X-MAP:URI="init.mp4"</div><i>→</i><div class="d-file"><b>init.mp4</b><small>再生設定</small></div>
+  <div class="d-line">#EXTINF:2.000,<br>seg/000001.m4s</div><i>→</i><div class="d-file"><b>000001.m4s</b><small>最初の約2秒</small></div>
+  <div class="d-line">#EXTINF:2.000,<br>seg/000002.m4s</div><i>→</i><div class="d-file"><b>000002.m4s</b><small>次の約2秒</small></div>
 </div>
-
-<div class="hls-tag-legend">
-  <span><code>EXT-X-MAP</code><b>初期化segmentの場所</b></span>
-  <span><code>EXTINF</code><b>次のsegmentの長さ</b></span>
-  <span><code>URI</code><b>次に取得するファイル</b></span>
-</div>
-
-<div class="source">RFC 8216: Media Playlist / Media Segment / EXT-X-MAP</div>
+<p class="d-note">Media Playlistの抜粋。ヘッダーなどは省略</p>
+<div class="bottom-claim">Playerはplaylistを読み、書かれたURIからHTTPで取得する</div>
 
 <!--
 Playerはplaylistを取得し、そこに書かれた順でinitとsegmentを取得します。
@@ -267,17 +243,18 @@ initだけにも、m4sだけにも、完全な再生体験はありません。p
 
 <div class="kicker">FRAGMENTED MP4</div>
 
-# fragmented MP4（fMP4）は<br>「設定」と「映像・音声の断片」を分ける
+# fMP4は、再生設定と映像・音声の断片を分ける
 
-<div class="fmp4-beginner-model">
-  <div class="fmp4-init"><span>1配信に1つ</span><b>init.mp4</b><small>Playerが再生を始めるための設定</small></div>
-  <i>+</i>
-  <div class="fmp4-media"><span>約2秒ごと</span><b>000001.m4s</b><small>実際の映像と音声</small></div>
-  <i>=</i>
-  <div class="fmp4-playable"><span>playlistが結ぶ</span><b>再生可能</b><small>Playerはこの組み合わせを取得</small></div>
+<div class="d">
+ <div class="d-row">
+  <div class="d-node"><span>init.mp4 · 最初に1回</span><b>再生設定</b><small>圧縮方式や<br>映像・音声の構成</small></div>
+  <i class="d-arrow">＋</i>
+  <div class="d-node blue fill"><span>m4s · 約2秒ごと</span><b>映像 ＋ 音声</b><small>断片 1　断片 2　断片 3 …</small></div>
+ </div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-node blue"><span>playlistが両方のURIと順番を結ぶ</span><b>Playerが組み合わせて再生する</b></div>
 </div>
-
-<div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter</div>
+<div class="bottom-claim">init単体・m4s単体を、完成した録画ファイルとして扱わない</div>
 
 <!--
 fragmented MP4、略してfMP4は、再生設定と映像・音声本体を分けて扱えるMP4です。
@@ -290,44 +267,41 @@ init.mp4にはftypとmoov、各m4sにはmoofとmdatが入ります。
 
 ---
 
-<div class="kicker">WHY IT IS LIVE</div>
+<div class="kicker">PLAYLIST GET · 1 / 2</div>
 
-# playlistが増えるたび、<br>Playerは次のsegmentを取得する
+# 最初は、playlistを読んで再生に必要なファイルを取得
 
-<div class="event-timeline">
-  <div class="event-phase">
-    <span class="time">t = 0</span>
-    <b>playlistだけ</b>
-    <small>segmentなし</small>
-  </div>
-  <div class="event-connector"></div>
-  <div class="event-phase live">
-    <span class="time">t = 2s</span>
-    <b>+ seg 1</b>
-    <small>追記</small>
-  </div>
-  <div class="event-connector"></div>
-  <div class="event-phase live">
-    <span class="time">t = 4s</span>
-    <b>+ seg 2</b>
-    <small>追記</small>
-  </div>
-  <div class="event-connector"></div>
-  <div class="event-phase ended">
-    <span class="time">stop</span>
-    <b>#EXT-X-ENDLIST</b>
-    <small>もう増えない</small>
-  </div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>Player</span><b>playlistをGET</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>サーバーのplaylist</span><b>init ＋ segment 1</b></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-row"><div class="d-node"><span>① 再生設定を取得</span><b>GET init.mp4</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>② 映像・音声を取得</span><b>GET 000001.m4s</b></div></div>
 </div>
-
-<div class="bottom-claim">Player（AVPlayer / Safariなどの再生エンジン）は同じplaylistを繰り返しGETする</div>
-
-<div class="source">Apple: Event playlist construction / RFC 8216 §4.3.3</div>
+<div class="bottom-claim">再生可能なファイルが揃う。再生開始のタイミングはPlayerにも依存する</div>
 
 <!--
-配信側は短いsegmentを作り、そのURIをplaylistの末尾へ追加します。
-Playerはplaylistを再取得し、新しく見つけたsegmentを順に取得します。この繰り返しがHLSのライブ配信です。停止時は#EXT-X-ENDLISTで閉じます。
+Playerの視点で最初の取得を追います。
+まずplaylistをGETし、そこに記されたinit.mp4と最初のsegmentを取得します。順番は理解のための模式図で、Playerの具体的な取得・バッファリング実装を固定するものではありません。
+[Sources]
+- RFC 8216: Media Playlist / EXT-X-MAP
+-->
 
+---
+
+<div class="kicker">PLAYLIST GET · 2 / 2</div>
+
+# 同じURLを再取得すると、新しいsegmentが見つかる
+
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>前回のplaylist</span><b>init ＋ segment 1</b><small>すでに取得した内容</small></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>今回のplaylist</span><b>init ＋ segment 1・2</b><small>末尾にsegment 2が追加</small></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-row"><div class="d-node"><span>Playerが新しいURIを発見</span><b>GET 000002.m4s</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>映像と音声を追加</span><b>続きへ再生が進む</b></div></div>
+</div>
+<div class="bottom-claim">ライブ中は繰り返す。終了時のENDLISTで「これ以上増えない」と伝える</div>
+
+<!--
+同じURLでもplaylistの本文が増えます。Playerは再取得し、新しいsegmentのURIを見つけて続きを取得します。
+サーバーが動画をPlayerへpushしているのではなく、Player側からHTTP GETしていることが重要です。
+今回のEVENT playlistは過去のsegmentも保持します。
 [Sources]
 - RFC 8216 §4.3.3: Media Playlist Tags
 -->
@@ -444,30 +418,19 @@ NSAllowsLocalNetworkingというATS設定と、ユーザーが許可するロー
 
 <div class="kicker">LIVE DEMO · PUBLIC SAMPLE</div>
 
-# 公開サンプルアプリを動かす
+# 公開サンプルを動かす：生成・保存・再生
 
-<div class="live-demo-grid">
-  <div class="live-demo-phone">
-    <span>HLSSample</span>
-    <div class="live-demo-camera">Camera Preview</div>
-    <b><i></i> 配信中</b>
-  </div>
-  <div class="live-demo-arrow">→<small>HTTP PUT</small></div>
-  <div class="live-demo-result">
-    <div class="live-upload-strip">
-      <div><span>start</span><b>PUT init.mp4</b></div>
-      <div><span>+2s</span><b>PUT seg 1</b></div>
-      <div><span>after PUT</span><b>PUT playlist</b></div>
-    </div>
-    <div class="live-demo-viewer">
-      <span>Mac HTTP Server / Viewer</span>
-      <b>LIVE <i>LOCAL</i></b>
-      <small>playlist.m3u8を追従再生</small>
-    </div>
-  </div>
+<div class="d">
+ <div class="d-row">
+  <div class="d-node blue"><span>iPhone</span><b>Camera ＋ Mic</b><small>2つのWriterで生成</small></div>
+  <i class="d-arrow">→</i>
+  <div class="d-node blue"><span>Mac HTTP Server</span><b>HLS一式を保存</b><small>HTTP PUTで受信<br>映像変換なし</small></div>
+  <i class="d-arrow">→</i>
+  <div class="d-node blue"><span>Viewer</span><b>追従再生</b><small>同じplaylistをGET</small></div>
+ </div>
+ <div class="d-row"><div class="d-node green fill"><span>iPhone内の別経路 · 停止後</span><b>完成MP4を写真へ保存して再生</b><small>フルHD・HEVC。MP4はMacへ送信しない</small></div></div>
 </div>
-
-<div class="demo-repository">停止後：写真アプリでフルHD・HEVCの保存動画を再生</div>
+<div class="bottom-claim">Safariでデモ。同じplaylist URLをAVPlayerへ渡した再生確認にも触れる</div>
 
 <!--
 [Timing checkpoint: 05:00]
@@ -656,34 +619,23 @@ SafariはネイティブHLS、それ以外は同梱したhls.jsで再生しま�
 class: demo-step
 ---
 
-<div class="kicker">DEMO RESULT · REAL OUTPUT</div>
+<div class="kicker">DEMO RESULT · FILE LOCATIONS</div>
 
-# 配信後に残る、3種類のHLSファイル
+# 配信後は、MacとiPhoneに別々の動画が残る
 
-<div class="real-output-tree">
-  <div class="tree-root">server/data/streams/<b>stream-20260818-225315-C7A2AB11/</b></div>
-  <div class="tree-columns">
-    <div><code>├── init.mp4</code><small>1,136 bytes</small></div>
-    <div><code>├── playlist.m3u8</code><small>682 bytes</small></div>
-    <div><code>└── seg/</code><small>18 files</small></div>
-    <div class="segment-list"><code>000001.m4s</code><code>000002.m4s</code><code>…</code><code>000018.m4s</code></div>
-  </div>
+<div class="d d-pair">
+ <div class="d-node blue"><span>Mac · HLSの実出力例</span><b>streamディレクトリ</b><small>init.mp4<br>playlist.m3u8<br>seg/000001.m4s<br>…<br>seg/000018.m4s</small></div>
+ <div class="d-node green"><span>iPhone · 停止後に写真保存</span><b>1本のMP4</b><small>1080 × 1920<br>HEVC / AAC<br>保存用Writerで別途生成</small></div>
 </div>
-
-<div class="bottom-claim">保存先で <code>ffplay playlist.m3u8</code> → HLS一式をそのまま再生確認</div>
+<div class="bottom-claim">Macはplaylistから再生。iPhoneは写真アプリで保存動画を再生</div>
 
 <!--
-停止時は、Writerを閉じて最後のsegmentを受け取ったあと、AsyncThrowingStreamをfinishします。
-すべてのイベントを処理した最後にENDLIST付きplaylistをPUTします。
-
-これはリポジトリに残っている実際の出力です。
-initが1つ、更新されるplaylistが1つ、2秒単位のm4sが18個あります。個人アプリでは同じ相対構造をS3 prefixへ置きます。
-保存先のstreamディレクトリでffplayにplaylist.m3u8を渡せば、m4s単体ではなくHLS一式として再生確認できます。
-
+Mac側は既存の実出力stream-20260818-225315-C7A2AB11を例にしています。initが1つ、playlistが1つ、m4sが18個です。
+保存先でffplay playlist.m3u8を実行するとHLS一式として再生できます。
+今回のSampleではiPhoneに保存用Writerを追加しています。停止後に完成したフルHD・HEVCのMP4を写真へ保存します。これはMacへ送ったsegmentを結合したものではなく、撮影中から独立して生成したファイルです。
 [Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 - iosdc2026HLSSample/server/data/streams/stream-20260818-225315-C7A2AB11
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
 -->
 
 ---
@@ -748,31 +700,13 @@ class: chapter
 
 <div class="kicker">RESPONSIBILITY</div>
 
-# AVAssetWriterはsegmentを作る。playlistは作らない。
+# Writerが作るDataを、アプリが保存・公開する
 
-<div class="ownership-split">
-  <div class="ownership-side writer-side">
-    <span>AVFoundation</span>
-    <b>圧縮して約2秒に分割</b>
-    <ul>
-      <li>映像はH.264</li>
-      <li>音声はAAC</li>
-      <li>init.mp4 + media segment</li>
-    </ul>
-  </div>
-  <div class="ownership-divider">/</div>
-  <div class="ownership-side app-side">
-    <span>App</span>
-    <b>保存してから公開</b>
-    <ul>
-      <li>保存先のpathを決める</li>
-      <li>HTTP成功を確認する</li>
-      <li>playlistへ追加する</li>
-    </ul>
-  </div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>AVFoundation</span><b>AVAssetWriter</b><small>映像・音声を圧縮<br>約2秒に分割</small></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>delegateの出力</span><b>init / media Data</b><small>まだファイル名はない</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>アプリ側</span><b>Publisher</b><small>名前を決めて保存<br>成功後にplaylist公開</small></div></div>
+ <div class="d-legend"><span>Writerの担当：HLS用のData生成</span><span>アプリの担当：保存先・HTTP・playlist</span></div>
 </div>
-
-<div class="source">AVAssetWriterDelegate / HLSSegmentRecorder / HLSStreamPublisher</div>
+<div class="bottom-claim">AVAssetWriterは、playlistを生成しない</div>
 
 <!--
 この責任分界が今日の中心です。
@@ -832,7 +766,7 @@ Capture側の3 objectとWriter側の3 objectを、2種類のdelegate callbackで
 
 <div class="kicker">CAPTURE TOPOLOGY</div>
 
-# CaptureSessionが、Camera / MicをDataOutputへつなぐ
+# CaptureSessionが、<br>Camera / MicをDataOutputへつなぐ
 
 <div class="capture-topology">
   <div class="device-column">
@@ -875,33 +809,22 @@ DataOutputを使うことで、videoは約1 frame、audioは短いblockごとの
 
 ---
 
-<div class="kicker">ONE CAPTURE, THREE OUTPUTS</div>
+<div class="kicker">ONE CAPTURE · THREE USES</div>
 
 # 1つのCaptureSessionを、3つの用途で使う
 
-<div class="capture-branches">
-  <div class="capture-branch-source"><span>Camera + Mic</span><b>CaptureSession</b></div>
-  <div class="capture-branch-lines"><i></i><i></i><i></i></div>
-  <div class="capture-branch-targets">
-    <div class="preview"><span>画面表示</span><b>PreviewLayer</b><small>配信中も表示</small></div>
-    <div class="hls"><span>ライブ配信</span><b>H.264 / AAC → fMP4</b><small>約2秒ごとにupload</small></div>
-    <div class="local"><span>ローカル保存</span><b>HEVC / AAC → MP4</b><small>1080 × 1920<br>映像 5 Mbps</small></div>
-  </div>
+<div class="d d-branch">
+ <div class="origin"><span>Camera ＋ Mic</span><b>CaptureSession</b></div>
+ <i>→</i><div class="d-node"><b>PreviewLayer</b><small>画面表示：Cameraの映像を表示</small></div>
+ <i>→</i><div class="d-node blue"><b>HLS用Writer</b><small>ライブ配信：短いfMP4 Dataを生成</small></div>
+ <i>→</i><div class="d-node green"><b>保存用Writer</b><small>端末保存：1本のMP4を生成</small></div>
 </div>
-
-<div class="local-recording-result">
-  <div><span>Sample</span> → <b>停止後、写真へ自動保存</b><br><span>MomentNow</span> → <b>元動画upload ＋ 設定時に写真へ保存</b></div>
-</div>
-
-<div class="bottom-claim">同じ撮影データを、配信用と保存用の2つのWriterへ渡す</div>
+<div class="bottom-claim">Sample・MomentNow共通。撮影データを2つのWriterへ入力する</div>
 
 <!--
-PreviewはAVCaptureVideoPreviewLayerへ同じCaptureSessionを接続するため、配信中も画面表示を続けられます。
-公開サンプルもMomentNowも、同じ元のCMSampleBufferをHLS用とローカルMP4用の2つのAVAssetWriterへ分岐します。
-SampleはLocalVideoWriterが保存用Writerを担当し、1080×1920・HEVC Main・映像5 Mbps・AAC 96 kbpsでMP4を作ります。
-Sampleは停止後、完成したMP4を写真へ自動保存します。写真への追加権限は配信開始前に必須です。
-MomentNowは元動画として別途uploadし、設定が有効なら写真へも保存します。SampleではMP4をサーバーへ送りません。
-HLS側には時刻を補正したコピー、保存側には元の時刻を持つコピーを渡し、各Writerの受け入れ可否を独立して判定します。
+まず用途を分けます。PreviewLayerには同じCaptureSessionを接続し、カメラ映像を画面へ表示します。
+DataOutputから届いた映像・音声は、HLS用Writerと保存用Writerへ渡します。PreviewがWriterの生成物を再生しているわけではありません。
+次のページで2つのWriterの出力設定と保存先を比べます。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/CameraPreviewView.swift
@@ -913,11 +836,56 @@ HLS側には時刻を補正したコピー、保存側には元の時刻を持�
 
 ---
 
-<div class="kicker">DATA OUTPUT DELEGATE</div>
+<div class="kicker">TWO WRITERS · TWO DESTINATIONS</div>
 
-# 映像と音声を、同じqueueで受け取る
+# 配信はH.264、端末保存はフルHD・HEVC
 
-<div class="delegate-setup-layout">
+<div class="d d-pair">
+ <div class="d-node blue fill"><span>Sample · HLS用Writer</span><b>H.264 / AAC</b><small>720 × 1280<br>映像 1.5 Mbps</small><div class="d-arrow down">↓</div><b>init ＋ m4s</b><small>撮影中からMacへPUT</small></div>
+ <div class="d-node green fill"><span>Sample · 保存用Writer</span><b>HEVC / AAC</b><small>1080 × 1920<br>映像 5 Mbps</small><div class="d-arrow down">↓</div><b>完成MP4</b><small>停止後に写真へ自動保存</small></div>
+</div>
+<div class="bottom-claim">MomentNowは元動画upload ＋ 設定に応じた写真保存も行う</div>
+
+<!--
+Sampleの保存音声はAAC 96 kbps・44.1 kHz・monoです。SampleはMP4をサーバーへ送信しません。
+MomentNowは同じく2つのWriterを使い、元動画として別途uploadし、設定が有効なら写真へも保存します。
+同じ撮影データから別々に生成しているため、配信用segmentを結合して高品質化したものではありません。
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">DATA OUTPUT · SERIAL QUEUE</div>
+
+# 映像と音声のcallbackを、1本のqueueで順に処理
+
+<div class="d">
+ <div class="d-row"><div class="d-node blue"><b>VideoDataOutput</b><small>映像1frameずつ</small></div><div class="d-node"><b>AudioDataOutput</b><small>短い音声blockずつ</small></div></div>
+ <div class="d-arrow down">↓</div><div class="d-label">共通のserial writingQueue　時間 →</div>
+ <div class="d-queue"><span>video 1</span><i>→</i><span>audio 1</span><i>→</i><span>video 2</span><i>→</i><span>audio 2</span></div>
+ <div class="d-caption">各callback内で、Writer開始・時刻処理・入力を順に行う</div>
+</div>
+<div class="bottom-claim">Writerの状態を同時に更新しない。映像と音声の時刻はPTSで扱う</div>
+
+<!--
+図はcallbackを直列に処理する例です。videoとaudioが必ず交互に届くわけではありません。
+serial queueを共有することで、Writerの開始やappendなどの状態更新を1か所で行います。
+queue上の到着順と、映像・音声を提示する時刻であるPTSは別です。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutput/setsamplebufferdelegate(_:queue:)
+- https://developer.apple.com/documentation/avfoundation/avcaptureaudiodataoutput/setsamplebufferdelegate(_:queue:)
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">DATA OUTPUT · DELEGATE CODE</div>
+
+# 2つのDataOutputに、同じqueueを指定する
+
 
 ```swift
 videoOutput.setSampleBufferDelegate(
@@ -925,30 +893,14 @@ videoOutput.setSampleBufferDelegate(
 audioOutput.setSampleBufferDelegate(
     self, queue: writingQueue)
 ```
-
-<div class="delegate-callback-flow">
-  <div><b>VideoDataOutput</b><small>約1 frame</small></div>
-  <div><b>AudioDataOutput</b><small>短いaudio block</small></div>
-  <i>→</i>
-  <code>serial writingQueue</code>
-  <i>↓</i>
-  <strong>captureOutput(_:didOutput:from:)</strong>
-</div>
-
-</div>
-
-<div class="bottom-claim">VideoとAudioを直列化し、Writerの状態を1か所で更新する</div>
+<div class="d d-row"><div class="d-node"><span>delegate</span><b>self</b><small>captureOutputで受信</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>callbackの実行先</span><b>writingQueue</b><small>同じserial queue</small></div></div>
+<div class="bottom-claim">設定は準備時に1回。撮影中は同じcallbackが繰り返し呼ばれる</div>
 
 <!--
-DataOutputへdelegateとcallback queueを設定すると、撮影のたびにcaptureOutputが呼ばれます。
-AppleのAPIはVideoのcallback queueにserial queueを要求し、frameの到着順を保証します。
-
-公開サンプルはVideoとAudioへ同じwritingQueueを指定します。
-そのため、Writerの開始、時刻補正、appendを同じserial queue上で順番に処理できます。
-
+VideoとAudioのDataOutputへ同じdelegateとqueueを指定します。
+Video用delegate queueにはserial queueが必要です。SampleはAudioも同じqueueへ渡しています。
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avcapturevideodataoutput/setsamplebufferdelegate(_:queue:)
-- https://developer.apple.com/documentation/avfoundation/avcaptureaudiodataoutput/setsamplebufferdelegate(_:queue:)
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
@@ -982,28 +934,17 @@ Sampleはhd1920x1080で撮影し、保存用Writerは1080×1920、配信用Write
 
 ---
 
-<div class="kicker">CONFIG</div>
+<div class="kicker">CONFIG · MOMENTNOW</div>
 
 # 配信開始前に、上り回線に合う単一品質を選ぶ
 
-```swift
-let profile: (CGSize, Int) = switch quality {
-case .high:   (.init(width: 720, height: 1280), 2_500_000)
-case .medium: (.init(width: 720, height: 1280), 1_500_000)
-case .low:    (.init(width: 480, height: 854),    900_000)
-}
-```
-
-<div class="config-rail">
-  <div><b>network状態</b><span>constrained / expensive</span></div>
-  <div><b>API応答</b><span>配信準備の待ち時間</span></div>
-  <div><b>test upload</b><span>上り速度</span></div>
-  <div><b>2.0 sec</b><span>segment target</span></div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>NWPath</span><b>回線の状態</b></div><div class="d-node"><span>API応答</span><b>準備の待ち時間</b></div><div class="d-node"><span>test upload</span><b>上り速度</b></div></div>
+ <div class="d-arrow down">↓</div><div class="d-label">MomentNow：開始前に1つ選択</div>
+ <div class="d-row"><div class="d-node blue"><span>Low · 480 × 854</span><b>0.9 Mbps</b></div><div class="d-node blue"><span>Medium · 720 × 1280</span><b>1.5 Mbps</b></div><div class="d-node blue"><span>High · 720 × 1280</span><b>2.5 Mbps</b></div></div>
+ <div class="d-caption">Sampleは720 × 1280・1.5 Mbps固定</div>
 </div>
-
-<div class="source">LiveSegmentRecorder.Config.resolved / AutoStreamingQualityResolver</div>
-
-<div class="bottom-claim">開始前に1品質を選ぶ。配信途中の自動画質切替（ABR）は行わない</div>
+<div class="bottom-claim">選んだ品質で配信する。配信途中の自動画質切替（ABR）は行わない</div>
 
 <!--
 [本編必須: 品質・ビットレートの選択]
@@ -1105,31 +1046,22 @@ HighはApple SDKで指定できるH.264 profileの名前です。
 
 ---
 
-<div class="kicker">URL-LESS HLS WRITER · iOS 26+</div>
+<div class="kicker">HLS WRITER · iOS 26+</div>
 
-# HLS用のAVAssetWriterを構成する
+# URLを持たないWriterから、Dataを受け取る
 
-<div class="writer-setup-layout">
+<div class="d d-row d-compact"><div class="d-node blue"><span>HLS向け設定</span><b>AVAssetWriter</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>delegate</span><b>init / media Data</b></div></div>
 
 ```swift
 let writer = AVAssetWriter(contentType: .mpeg4Movie)
 writer.outputFileTypeProfile = .mpeg4AppleHLS
 writer.preferredOutputSegmentInterval = .init(
-    seconds: 2, preferredTimescale: 600
-)
+    seconds: 2, preferredTimescale: 600)
 writer.initialSegmentStartTime = startTimeOffset
 writer.delegate = self
 ```
 
-<div class="writer-segment-output">
-  <b>AVAssetWriter</b>
-  <i>→ delegate →</i>
-  <div class="writer-data-stack"><span>initialization Data</span><span>separable Data</span></div>
-</div>
-
-</div>
-
-<div class="bottom-claim">URLへ書き込まず、delegateへsegment Dataを出す</div>
+<div class="bottom-claim">ファイル保存用のoutputURLは指定しない</div>
 
 <!--
 このサンプルのWriterコードはiOS 26以上が対象です。
@@ -1151,43 +1083,20 @@ preferredTimescaleに 600 を指定した場合、1秒は 600/600 となり、1/
 
 ---
 
-<div class="kicker">INPUT → RECEIVER → WRITER · iOS 26+</div>
+<div class="kicker">INPUT · RECEIVER · WRITER</div>
 
-# CMSampleBufferの入口はReceiver
+# Inputは圧縮設定、Receiverはbufferの入口
 
-<div class="receiver-setup-layout">
-
-```swift
-let videoInput = AVAssetWriterInput(
-    mediaType: .video,
-    outputSettings: videoSettings()
-)
-self.videoReceiver =
-    writer.inputReceiver(
-        for: videoInput)
-```
-
-<div class="receiver-connection">
-  <div class="receiver-row video"><span>Video / H.264</span><b>videoReceiver</b></div>
-  <div class="receiver-row audio"><span>Audio / AAC</span><b>audioReceiver</b></div>
-  <i>↓ Inputを接続 ↓</i>
-  <strong>AVAssetWriter</strong>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>① 準備時に設定</span><b>Input</b><small>mediaType<br>outputSettings</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>② Writerへ接続</span><b>Receiver</b><small>入力窓口を取得して保持</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>③ 生成を担当</span><b>Writer</b><small>映像・音声を圧縮<br>fMP4 Dataを出力</small></div></div>
+ <div class="d-row"><div class="d-node fill"><span>撮影中の繰り返し</span><b>CMSampleBufferをReceiverへ入力する</b><small>videoReceiver / audioReceiverを使い分ける</small></div></div>
 </div>
-
-</div>
-
-<div class="bottom-claim">Videoを代表例として表示。Audioも同じ手順でReceiverを保持する</div>
+<div class="bottom-claim">Inputは設定。撮影データを書き込む窓口はReceiver</div>
 
 <!--
-AVAssetWriterInputには、VideoならH.264、AudioならAACなどのencode設定を渡します。
-inputReceiver(for:)は、そのInputをWriterへ接続すると同時に、CMSampleBufferを書き込むReceiverを返します。
-画面ではVideo側を示しています。Audio側もmediaTypeとoutputSettingsを替え、同じ手順でaudioReceiverへ保持します。
-
-これはiOS 26以上のSampleBufferReceiver APIです。
-従来のwriter.add(input)とinput.append(sampleBuffer)に相当する接続と書き込みを、Receiver経由で行います。
-
-Inputはsetup中のローカル変数で十分です。
-一方ReceiverはcaptureOutputが呼ばれるたびに使うため、HLSSegmentRecorderのpropertyとして保持します。
+Input、Receiver、Writerの関係を先に確認します。Inputへ圧縮設定を渡し、inputReceiver(for:)でWriterへ接続します。
+返されたReceiverを保持し、以後のcallbackごとにCMSampleBufferを入力します。
+Inputをデータが順番に通過する処理ステップとしてではなく、接続する設定として捉えます。
 
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avassetwriter
@@ -1197,25 +1106,41 @@ Inputはsetup中のローカル変数で十分です。
 
 ---
 
-<div class="kicker">CMSAMPLEBUFFER ≠ SEGMENT</div>
+<div class="kicker">RECEIVER SETUP · iOS 26+</div>
 
-# 多数のCMSampleBufferを、約2秒のsegmentへまとめる
+# InputをWriterへ接続し、Receiverを保持する
 
-<div class="sample-to-segment-flow">
-  <div class="sample-flow-stack inputs">
-    <div class="sample-flow-node video"><span>Camera</span><b>video CMSampleBuffer</b><small>約1 frame · 30fpsなら約33ms</small></div>
-    <div class="sample-flow-node audio"><span>Microphone</span><b>audio CMSampleBuffer</b><small>短い音声block</small></div>
-  </div>
-  <div class="sample-flow-arrow">→</div>
-  <div class="sample-flow-writer"><span>AVAssetWriter</span><b>圧縮<br>+ 時間順に格納<br>+ 約2秒に分割</b></div>
-  <div class="sample-flow-arrow">→</div>
-  <div class="sample-flow-stack outputs">
-    <div class="sample-flow-node init"><span>1配信に1つ</span><b>initialization</b><small>圧縮方式 · 映像/音声の構成</small></div>
-    <div class="sample-flow-node media"><span>約2秒ごと</span><b>separable</b><small>video frame + audio block本体</small></div>
-  </div>
+
+```swift
+let videoInput = AVAssetWriterInput(
+    mediaType: .video,
+    outputSettings: videoSettings()
+)
+self.videoReceiver = writer.inputReceiver(for: videoInput)
+```
+<div class="d d-row"><div class="d-node"><span>setup内で作成</span><b>videoInput</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>以後のcallbackで使用</span><b>videoReceiver</b></div></div>
+<div class="bottom-claim">AudioもmediaTypeとoutputSettingsを替え、同じ手順で接続する</div>
+
+<!--
+inputReceiver(for:)がInputをWriterへ接続し、書き込むためのReceiverを返します。
+従来のwriter.add(input)とinput.append(sampleBuffer)に相当する接続と書き込みをReceiver経由で行う、iOS 26以降のAPIです。
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">CMSAMPLEBUFFER · SEGMENT</div>
+
+# 小さなbufferをまとめ、約2秒のsegmentにする
+
+<div class="d">
+ <div class="d-label">撮影中に届く入力の例</div>
+ <div class="d-queue"><span>video</span><span>audio</span><span>video</span><span>audio</span><span>…</span></div>
+ <div class="d-row"><div class="d-node"><span>1つのvideo buffer</span><b>約1 frame</b><small>30fpsなら約33ms</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>AVAssetWriter</span><b>圧縮 ＋ 分割</b><small>映像と音声を格納</small></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>1つのmedia Data</span><b>約2秒分</b><small>映像と音声を含む</small></div></div>
 </div>
-
-<div class="bottom-claim">入力は小さなbuffer。出力は約2秒分の映像・音声</div>
+<div class="bottom-claim">init Dataは最初に1回。media Dataは撮影中に繰り返し届く</div>
 
 <!--
 CMSampleBufferはsegmentファイルではありません。Videoなら約1 frame分、Audioなら短い音声blockです。
@@ -1261,47 +1186,47 @@ Writerが受け取れないときにframeを貯めない判断は、Chapter 05�
 
 ---
 
-<div class="kicker">CAPTURE CALLBACK → RECEIVER · iOS 26+</div>
+<div class="kicker">CAPTURE CALLBACK · TWO COPIES</div>
 
-# HLS側は、補正したbufferをReceiverへ渡す
+# 同じ撮影データをコピーし、2つのWriterへ
 
-<div class="append-pipeline">
-  <div><span>DataOutput</span><b>callback</b></div>
-  <i>→</i>
-  <div><span>Writerへ渡す前</span><b>時刻を補正</b></div>
-  <i>→</i>
-  <div><span>CoreMedia</span><b>Readyなbuffer</b></div>
-  <i>→</i>
-  <div class="primary"><span>Receiver</span><b>append</b></div>
+<div class="d d-branch two">
+ <div class="origin"><span>Capture callback</span><b>元の<br>CMSampleBuffer</b></div>
+ <i>→</i><div class="d-node blue fill"><span>HLS用のコピー</span><b>時刻を補正</b><small>HLS用Receiverへ入力</small></div>
+ <i>→</i><div class="d-node green fill"><span>保存用のコピー</span><b>元の時刻を使用</b><small>保存用Receiverへ入力</small></div>
 </div>
+<div class="bottom-claim">HLS側が受け取れなくても、保存用Writerへの入力は続ける</div>
+
+<!--
+ここは同じcallback内の分岐です。処理が別threadで同時実行されることを表す図ではありません。
+HLS側は時刻を補正したコピーを作り、保存側は元の時刻を持つ独立したコピーを作ります。
+HLS側のメソッドがdropや失敗でreturnしても、callbackからの保存側appendは続きます。一方の入力失敗で両方をスキップしない構成です。
+
+[Sources]
+- https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">APPEND IMMEDIATELY · iOS 26+</div>
+
+# HLS側のReceiverへ、待たずに入力を試す
+
 
 ```swift
 let readySampleBuffer = CMReadySampleBuffer(
-    unsafeBuffer: transferableSampleBuffer
-)
+    unsafeBuffer: transferableSampleBuffer)
 let didAppend = try receiver.appendImmediately(
-    readySampleBuffer
-)
+    readySampleBuffer)
 guard didAppend else { return }
 ```
-
-<div class="append-outcomes">
-  <div class="success"><b>true</b><span>Writerへ渡せた</span></div>
-  <div class="warning"><b>false</b><span>待たずにdrop</span></div>
-  <div class="danger"><b>throw</b><span>streamをerror終了</span></div>
-</div>
+<div class="d d-row"><div class="d-node blue"><span>true</span><b>入力できた</b></div><div class="d-node warn"><span>false</span><b>このbufferをdrop</b></div><div class="d-node warn"><span>throw</span><b>HLS側が失敗</b></div></div>
+<div class="bottom-claim">保存用Writerへの入力は別に実行する</div>
 
 <!--
-captureOutputが呼ばれるたび、CMSampleBufferの時刻を補正し、CoreMediaの所有権を明示したCMReadySampleBufferへ変換します。
-その後、VideoまたはAudioのReceiverへappendImmediatelyします。
-
-appendImmediatelyは同期的に受け入れを試します。
-trueならappend成功、falseならWriterがまだ受け入れられないため、そのCMSampleBufferを待たずに落とします。throwならWriter自体の失敗としてAsyncThrowingStreamをerrorで閉じます。
-待つappendではなくappendImmediatelyを選ぶ理由は、Camera callbackへ古いframeを貯めないためです。
-CMReadySampleBufferとappendImmediatelyもiOS 26以上のAPIです。
-ここに示すコードはHLS側です。同じcallback内でLocalVideoWriter.appendも呼び、保存側には元の時刻のコピーを渡します。
-HLS側のdropや失敗によるreturnはHLS側のメソッド内に留め、保存側へのappendは続けます。
-
+HLS側のappendの抜粋です。時刻補正後のコピーをCMReadySampleBufferへ変換してReceiverに渡します。
+appendImmediatelyは同期的に受け入れを試し、falseならbufferを保留せずdropします。throw時はHLSのfragment streamをerrorで閉じますが、正常な保存用Writerは停止操作まで継続します。
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
@@ -1353,39 +1278,43 @@ HLSSegmentRecorderはDataをHLSFragmentへ変換するところまでを担当�
 
 ---
 
-<div class="kicker">MINIMUM IMPLEMENTATION ORDER</div>
+<div class="kicker">IMPLEMENTATION ORDER · SETUP</div>
 
-# HLS生成の8ステップ
+# HLS生成の準備：SDK objectを接続する
 
-<div class="generation-lifecycle">
-  <div class="generation-phase">
-    <h2>準備</h2>
-    <div><b>01</b><span><strong>Captureを構成</strong>Camera / MicをSessionへ追加</span></div>
-    <div><b>02</b><span><strong>DataOutputを接続</strong>delegateとserial queueを指定</span></div>
-    <div><b>03</b><span><strong>Writerを構成</strong>HLS profileと約2秒の設定</span></div>
-    <div><b>04</b><span><strong>Receiverを保持</strong>Video / Audio Inputを接続</span></div>
-  </div>
-  <div v-click class="generation-phase execution">
-    <h2>実行・停止</h2>
-    <div><b>05</b><span><strong>最初のVideoで開始</strong><code>start()</code> → <code>startSession</code></span></div>
-    <div><b>06</b><span><strong>時刻を補正してappend</strong><code>appendImmediately</code></span></div>
-    <div><b>07</b><span><strong>delegateでDataを受信</strong>initialization → separable</span></div>
-    <div><b>08</b><span><strong>停止時にflush</strong><code>finishWriting</code>で最後のData</span></div>
-  </div>
+<div class="d d-row">
+ <div class="d-node"><span class="d-number">01</span><b>Capture</b><small>Camera / Micを<br>Sessionへ追加</small></div><i class="d-arrow">→</i>
+ <div class="d-node"><span class="d-number">02</span><b>DataOutput</b><small>delegateと<br>serial queue</small></div><i class="d-arrow">→</i>
+ <div class="d-node blue"><span class="d-number">03</span><b>Writer</b><small>HLS profile<br>約2秒の設定</small></div><i class="d-arrow">→</i>
+ <div class="d-node blue"><span class="d-number">04</span><b>Receiver</b><small>Inputを接続し<br>窓口を保持</small></div>
 </div>
-
-<div class="bottom-claim">05・06では、最初の映像を基準にWriterへ渡す時刻を調整する</div>
+<div class="bottom-claim">準備では、入力元・callbackの実行先・生成先をつなぐ</div>
 
 <!--
-ここまでの実装順を、準備と実行・停止に分けてまとめます。
-CaptureSessionとDataOutput、HLS設定済みWriter、InputとReceiverを用意します。
-クリックで右側の実行・停止を表示します。
-最初のvideo frameでWriterのsessionを開始し、同じ時刻補正をVideoとAudioへ適用してappendします。
-Writer delegateから最初にinitialization Data、その後にseparable Dataが届きます。
-停止時はfinishWritingまで待つことで、最後の短いsegmentも受け取れます。
+HLS生成の8ステップのうち、最初の4つです。ここは準備時の接続を復習します。
+まだfragmentを送信している段階ではありません。次に、撮影データが届いた後の開始と繰り返しを見ます。
 
-このうち5番と6番の時刻の扱いを、次の数値例で確認します。
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+-->
 
+---
+
+<div class="kicker">IMPLEMENTATION ORDER · RUN / STOP</div>
+
+# HLS生成の実行：開始・入力・受信・終了
+
+<div class="d d-row">
+ <div class="d-node"><span class="d-number">05</span><b>開始</b><small>最初のVideoで<br>startSession</small></div><i class="d-arrow">→</i>
+ <div class="d-node blue"><span class="d-number">06</span><b>入力</b><small>時刻を補正<br>Receiverへappend</small></div><i class="d-arrow">→</i>
+ <div class="d-node blue"><span class="d-number">07</span><b>Dataを受信</b><small>init：1回<br>media：反復</small></div><i class="d-arrow">→</i>
+ <div class="d-node"><span class="d-number">08</span><b>終了</b><small>finishWritingで<br>最後のData</small></div>
+</div>
+<div class="bottom-claim">05・06の時刻処理は、次の1枚で確認する</div>
+
+<!--
+最初のvideoでsessionを開始し、各callbackで時刻を補正したbufferをappendします。入力とData出力は撮影中に繰り返されます。
+停止時はfinishWritingの完了まで待ちます。次の数値例で、入力する時刻の調整だけを短く説明します。
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
@@ -1396,24 +1325,16 @@ class: timing-overview
 
 <div class="kicker">WRITER TIMING</div>
 
-# Writerへ渡す時刻の調整
+# 映像と音声の時刻を、同じ量だけ移動する
 
-<p class="timing-intro">時刻の扱いは、Apple公式サンプルの方針を採用</p>
-<p class="timing-context">HLS側：最初の映像を10秒に置き、音声も同じ量だけずらす</p>
-
-<table class="timing-comparison">
-  <caption>同じ90秒を引くので、時間差は変わらない</caption>
-  <thead><tr><th></th><th>調整前の時刻</th><th>Writerへ渡す時刻</th></tr></thead>
-  <tbody>
-    <tr><th>映像</th><td>100.00<span>秒</span></td><td>10.00<span>秒</span></td></tr>
-    <tr><th>音声</th><td>100.02<span>秒</span></td><td>10.02<span>秒</span></td></tr>
-  </tbody>
-</table>
-
+<p class="d-note">HLS側はApple公式サンプルの方針を採用</p>
+<div class="d d-time-pair">
+ <div><div class="d-label">調整前</div><div class="d-time-track"><div>100.00<small>映像</small></div><div>100.02<small>音声</small></div></div><div class="d-time-gap">時間差 0.02秒</div></div>
+ <div class="d-time-shift">−90秒<br>→</div>
+ <div><div class="d-label">Writerへ渡す時刻</div><div class="d-time-track"><div>10.00<small>映像</small></div><div>10.02<small>音声</small></div></div><div class="d-time-gap">時間差 0.02秒</div></div>
+</div>
 <div class="bottom-claim warning">検証結果：時刻調整を外すと、映像・音声が入らなかった</div>
-<p class="timing-detail-note">検証条件：Writerの開始位置は10秒のまま<br>時刻調整だけを外した場合</p>
-
-<div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter</div>
+<p class="d-note"><b>検証条件：Writerの開始位置は10秒のまま、時刻調整だけを外した場合</b></p>
 
 <!--
 [Timing checkpoint: 20:00]
@@ -1460,18 +1381,16 @@ Writerへ渡す時刻の扱いを確認したので、次は約2秒のfragment�
 
 ---
 
-<div class="kicker">HLS-SPECIFIC · FOUR KNOBS</div>
+<div class="kicker">HLS WRITER · FOUR SETTINGS</div>
 
-# 今回のHLS Writerで使う、4つの設定
+# 4つの設定が、出力形式と境界・受け口を決める
 
-<div class="setting-list">
-  <div><b>01</b><code>outputFileTypeProfile</code><span>Apple HLS向けfMP4</span></div>
-  <div><b>02</b><code>preferredOutputSegmentInterval</code><span>希望するsegment間隔</span></div>
-  <div><b>03</b><code>initialSegmentStartTime</code><span>最初のsegment開始時刻</span></div>
-  <div><b>04</b><code>delegate</code><span>生成されたDataの受け口</span></div>
+<div class="d d-link-map">
+ <div class="d-line">outputFileTypeProfile</div><i>→</i><div class="d-file"><b>Writerの出力形式</b><small>Apple HLS向けfMP4</small></div>
+ <div class="d-line">preferredOutputSegmentInterval</div><i>→</i><div class="d-file"><b>segmentの間隔</b><small>約2秒ごとの境界</small></div>
+ <div class="d-line">initialSegmentStartTime</div><i>→</i><div class="d-file"><b>最初の開始位置</b><small>時刻補正に合わせる</small></div>
+ <div class="d-line">delegate</div><i>→</i><div class="d-file"><b>Dataの受け口</b><small>init / mediaを受信</small></div>
 </div>
-
-<div class="source">HLSSegmentRecorder.setupWriterLocked()</div>
 
 <!--
 この4つが、ファイルURLを持たないHLS用Writerの核です。
@@ -1480,40 +1399,23 @@ Writerへ渡す時刻の扱いを確認したので、次は約2秒のfragment�
 
 ---
 
-<div class="kicker">PREFERRED INTERVAL</div>
+<div class="kicker">SEGMENT BOUNDARY · SCHEMATIC</div>
 
-# 2秒ぴったりではなく、2秒付近のIDRで切る
+# 約2秒付近のIDRを境界に、segmentを作る
 
-<div class="segment-boundary-demo">
-  <div class="boundary-row preferred">
-    <b>希望</b>
-    <span>0.00s</span><i></i><span>2.00s</span><i></i><span>4.00s</span>
-  </div>
-  <div class="boundary-row actual">
-    <b>実際</b>
-    <span>IDR · 0.00s</span><i></i><span>IDR · 2.03s</span><i></i><span>IDR · 4.00s</span>
-  </div>
+<div class="d">
+ <div class="d-axis full"><span>0.00秒</span><span>2.03秒</span><span>4.00秒</span></div>
+ <div class="d-frames"><span class="idr">IDR</span><span>P</span><span>…</span><span>P</span><span class="idr">IDR</span><span>P</span><span>…</span><span>P</span></div>
+ <div class="d-brackets"><span>segment 1：2.03秒</span><span>segment 2：1.97秒</span></div>
+ <div class="d-row"><div class="d-node"><span>希望する間隔</span><b>2.00秒</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>実際に生成した長さ</span><b>reportのduration</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>playlistへ記載</span><b>EXTINF</b></div></div>
+ <div class="d-caption">模式例：2秒ぴったりになるとは限らない</div>
 </div>
-
-<div class="actual-duration-flow">
-  <div><small>segment 1</small><b>2.03s</b></div>
-  <div><small>segment 2</small><b>1.97s</b></div>
-  <span>→</span>
-  <div class="playlist-duration"><small>playlist</small><b>実durationをEXTINFへ</b></div>
-</div>
-
-<div class="term-definition compact"><b>IDR</b><span>ほかのframeを参照せず、そこから単独で再生を始められるkeyframe</span></div>
-
-<div class="bottom-claim warning">2秒は設定値。playlistにはAVAssetSegmentReportの実durationを書く</div>
 
 <!--
-preferredOutputSegmentIntervalのproperty名どおり、2秒は希望する間隔です。
-HLSのvideo segmentは、途中のframeを参照せず単独でデコードを始められるIDR frameから開始する必要があります。
-そのため希望位置が2.00秒でも、実際のIDRが2.03秒なら、segment境界は2.03秒まで前後します。
-この例では1本目が2.03秒、次が1.97秒です。常に2.0秒固定とは限りません。
-playlistのEXTINFには設定値の2秒ではなく、AVAssetSegmentReportが返すvideo trackの実durationを書きます。
-サンプルではreportが取得できない、またはdurationが無効な場合だけ設定値の2秒へfallbackします。
-次にplaylistへ書く実durationを確認し、その後で希望位置の近くにIDRを用意するencoder設定を見ます。
+今回のSampleは未圧縮入力をWriterでH.264にencodeします。Appleの説明では、encodeモードは希望間隔に達するか超えるvideo sampleをsync sampleにするため、ほぼ希望間隔で出力します。
+すでに存在するIDRを長時間待つpassthroughだけの挙動として説明しません。図の2.03秒・1.97秒は実測ではなく境界のずれを示す模式例です。
+playlistにはAVAssetSegmentReportのvideo trackの実durationを渡します。Sampleはreport未取得・無効時だけ設定値へfallbackします。
+IDRは前のframeを参照せず、そこから再生を開始できるkeyframeです。
 
 [Sources]
 - Apple: AVAssetWriter.preferredOutputSegmentInterval
@@ -1566,34 +1468,24 @@ reportがない、無効、0以下の場合だけ設定値の2秒へ戻します
 
 <div class="kicker">KEYFRAME ALIGNMENT</div>
 
-# Appleは、約2秒ごとのIDRを推奨
+# IDRを用意すると、<br>segmentの先頭から再生できる
 
-<div class="gop-timeline">
-  <div class="frame-row">
-    <span class="i-frame">I</span><span>P</span><span>P</span><span>P</span>
-    <span class="i-frame">I</span><span>P</span><span>P</span><span>P</span>
-    <span class="i-frame">I</span>
-  </div>
-  <div class="gop-brackets">
-    <div>segment 1 · ~2s</div>
-    <div>segment 2 · ~2s</div>
-  </div>
+<div class="d">
+ <div class="d-label">映像frameの依存関係（模式図）</div>
+ <div class="d-frames"><span class="idr">IDR</span><span>→ P</span><span>→ P</span><span>→ P</span><span class="idr">IDR</span><span>→ P</span><span>→ P</span><span>→ P</span></div>
+ <div class="d-brackets"><span>ここから再生可能 · 約2秒</span><span>ここから再生可能 · 約2秒</span></div>
 </div>
 
 ```swift
 AVVideoMaxKeyFrameIntervalDurationKey: config.segmentSeconds
 ```
 
-<div class="term-definition"><b>IDR</b><span>ほかのframeを参照せず、そこから再生を始められるkeyframe</span></div>
-
-<div class="source">Apple HLS Authoring Specification 1.13: IDRは2秒ごとを推奨</div>
+<div class="bottom-claim">Appleは約2秒ごとのIDRを推奨。segmentの希望間隔と合わせる</div>
 
 <!--
-Playerがsegmentの先頭からデコードするにはIDRが必要です。
-segment targetと同じ2秒でmax keyframe interval durationを指定し、境界を作れるようにします。
-AppleのHLS Authoring Specification 1.13にも「Key frames (IDRs) SHOULD be present every two seconds」とあります。
-MUSTではなくSHOULDなので絶対必須ではありませんが、Apple端末向けHLSで特別な理由がなければ従う推奨です。
-これはsegmentを必ず2.000秒にするという意味ではなく、約2秒ごとにIDRを用意するというencoder側の要件です。
+IDRの位置で、前のsegmentに依存せず再生を開始できます。Pは前のframeを参照して圧縮するframeの模式表現です。
+I-frame全般とIDRを同一視しないため、図ではIDRと明記しています。
+Apple HLS Authoring Specificationは約2秒ごとのIDRを推奨します。この設定はsegmentを常に2.000秒固定にする保証ではありません。
 
 [Sources]
 - https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices
@@ -1667,19 +1559,16 @@ S3はファイルをobjectとして保存するサービス、CloudFrontはそ�
 
 ---
 
-<div class="kicker">SERVER · ATOMIC REPLACE</div>
+<div class="kicker">ATOMIC REPLACE · PUBLIC SAMPLE</div>
 
-# PUT中のファイルを、Viewerへ見せない
+# 書き込み中は、古い完成ファイルを公開し続ける
 
-<div class="atomic-replace">
-  <div><b>1 temporary file</b><span>request bodyを書き込む</span></div>
-  <i>→</i>
-  <div><b>2 ディスクへ書き切る</b><span>flush + fsync</span></div>
-  <i>→</i>
-  <div class="hot"><b>3 os.replace</b><span>完成品へ一気に置換</span></div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>① PUTを受信中</span><b>一時ファイルへ書く</b><small>flush ＋ fsyncまで完了させる</small></div><div class="d-node blue"><span>その間のViewer</span><b>古い完成版をGET</b><small>一時ファイルは参照しない</small></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-row"><div class="d-node blue fill"><span>② os.replace</span><b>公開pathを一気に置換</b><small>書き切ったファイルへ切り替える</small></div><div class="d-node blue"><span>置換後のViewer</span><b>新しい完成版をGET</b><small>途中の内容を見せない</small></div></div>
 </div>
-
-<div class="bottom-claim">playlistの途中状態や、半分だけのm4sをGETさせない</div>
+<div class="bottom-claim">playlistの途中状態や、半分だけのm4sを公開しない</div>
 
 <!--
 [Optional detail: 時間が厳しい場合は省略]
@@ -1693,23 +1582,16 @@ Macサーバーはrequest bodyをdestinationへ直接書きません。
 
 ---
 
-<div class="kicker">VISIBLE OUTPUT</div>
+<div class="kicker">PLAYABLE STATE</div>
 
-# 再生開始は、init保存と最初のsegment公開の後
+# Dataの生成だけでは、<br>Viewerからは再生できない
 
-<div class="output-clock">
-  <div class="clock-column"><span>start</span><b>init Data</b></div>
-  <div class="clock-column"><span>network</span><b>PUT init</b></div>
-  <div class="clock-column active"><span>~2s</span><b>PUT seg 1</b></div>
-  <div class="clock-column active"><span>after PUT</span><b>playlist更新</b></div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>端末内</span><b>Dataを生成</b><small>Writer delegateで受信</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>保存先</span><b>init ＋ m4sを保存</b><small>HTTP成功を確認</small></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>公開</span><b>playlistに掲載</b><small>URIから取得可能になる</small></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-node blue"><span>Viewer</span><b>playlistを読み、initとsegmentをGETして再生</b></div>
 </div>
-
-<div class="playable-equation">
-  <span>init.mp4<br><small>保存済み</small></span><i>+</i>
-  <span>000001.m4s<br><small>保存済み</small></span><i>+</i>
-  <span>playlist<br><small>segment 1を掲載済み</small></span><i>=</i>
-  <b>Viewer<br>再生開始</b>
-</div>
+<div class="bottom-claim">保存と公開が揃うと再生可能になる。実際の開始時刻はPlayerにも依存する</div>
 
 <!--
 AVAssetWriterがDataを返しただけでは、まだ視聴者は再生できません。
@@ -1718,32 +1600,21 @@ initと最初のm4sが保存先に存在し、playlistへ最初のsegmentが載�
 
 ---
 
-<div class="kicker">PUBLIC SAMPLE · LOCAL PLAYLIST</div>
+<div class="kicker">PLAYLIST STATE · 1 / 2</div>
 
-# playlist公開後に、アプリ内の状態を確定する
+# PUT成功を確認してから、候補のplaylistを採用する
 
-```swift {1-3|4-6}
-var nextManifest = manifest
-nextManifest.addSegment(seq: seq, durationSec: durationSec)
-
-try await client.putPlaylist(
-    streamId: streamId, text: nextManifest.text)
-manifest = nextManifest
-```
-
-<div class="transaction-visual">
-  <div><span>current</span><b>segments 1...N</b></div>
-  <i>copy</i>
-  <div><span>candidate</span><b>+ segment N+1</b></div>
-  <i>HTTP成功</i>
-  <div class="hot"><span>状態を確定</span><b>current = candidate</b></div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>アプリ内の現在値</span><b>segment 1</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>コピーして候補を作成</span><b>segment 1・2</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>サーバーへ送信</span><b>playlist PUT</b></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-row"><div class="d-node blue fill"><span>成功を確認できた</span><b>現在値を1・2へ更新</b></div><div class="d-node warn"><span>成功を確認できない</span><b>現在値は1のまま</b></div></div>
 </div>
-
-<div class="bottom-claim">playlistのPUT成功後に、アプリ内の状態を確定する</div>
+<div class="bottom-claim">segment 2本体は保存済み。この図はplaylistとアプリ内状態の更新</div>
 
 <!--
-サンプルのHLSManifestはseqをkeyにしてsegmentを保持し、表示時には必ず番号順にします。
-内部状態を先に進めません。次のmanifestをコピーで作り、そのPUTが成功した後だけcurrentへ代入します。
+segment本体を保存した後のplaylist処理です。アプリ内のmanifestをコピーして候補を作り、その候補をPUTします。
+PUT成功を確認した場合だけ現在値へ代入します。通信エラー時にアプリ内だけ先へ進まないようにします。
+レスポンスを受け取れなかった場合でもサーバーで保存済みの可能性はあるため、失敗時にサーバーの内容が必ず古いままとは説明しません。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSManifest.swift
@@ -1753,18 +1624,44 @@ manifest = nextManifest
 
 ---
 
-<div class="kicker">PRODUCTION PUBLISH FLOW</div>
+<div class="kicker">PLAYLIST STATE · 2 / 2</div>
 
-# 署名付きURL → S3 PUT → playlist公開
+# 候補を送信し、成功後にmanifestへ代入する
 
-<div class="settings-table">
-  <div class="settings-head"><span>APPの操作</span><span>MomentNow</span><span>結果</span></div>
-  <div><b>S3への署名付きURLを受け取る</b><code>POST /presign</code><span>presigned PUT URL</span></div>
-  <div><b>segment本体を保存する</b><code>PUT → S3</code><span>objectが存在する</span></div>
-  <div><b>playlistへ載せる</b><code>POST /commit</code><span>Viewerから見える</span></div>
+
+```swift
+var nextManifest = manifest
+nextManifest.addSegment(seq: seq, durationSec: durationSec)
+try await client.putPlaylist(
+    streamId: streamId, text: nextManifest.text)
+manifest = nextManifest
+```
+<div class="d d-row"><div class="d-node"><span>通信前</span><b>nextManifestだけ変更</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>awaitが成功した後</span><b>manifestを置き換える</b></div></div>
+<div class="bottom-claim">PUTがthrowした場合、最後の代入へ進まない</div>
+
+<!--
+HLSStreamPublisherの抜粋です。実装ではputPlaylistをretryingで包んでいますが、ここは状態の確定位置へ注目するため省略しています。
+候補の作成、通信、現在値への代入の順番をコードへ対応づけます。
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+-->
+
+---
+
+<div class="kicker">MOMENTNOW · PUBLISH SEQUENCE</div>
+
+# S3へDataをPUTし、APIでplaylistを公開する
+
+<div class="d d-sequence">
+ <b class="d-actor">iPhone</b><b class="d-actor">API</b><b class="d-actor">S3</b>
+ <div class="d-msg" style="grid-column:1/3">① presign</div>
+ <div class="d-msg back" style="grid-column:1/3">② 署名付きURL</div>
+ <div class="d-msg bytes" style="grid-column:1/4">③ segment DataをPUT</div>
+ <div class="d-msg back" style="grid-column:1/4">④ 保存成功（2xx）</div>
+ <div class="d-msg" style="grid-column:1/3">⑤ commit</div>
+ <div class="d-msg" style="grid-column:2/4">⑥ playlistを更新</div>
 </div>
-
-<div class="bottom-claim">S3は保存先の選択。HLSで重要なのは「保存してから公開」</div>
+<div class="bottom-claim">APIは保存の許可と公開を制御。映像Dataを変換しない</div>
 
 <!--
 MomentNowの書き込み処理は3段階です。
@@ -1850,19 +1747,15 @@ media Dataは約2秒ごとに、seqに対応する署名付きURLを取得して
 
 ---
 
-<div class="kicker">PUBLISH AFTER BYTES</div>
+<div class="kicker">SAVE BEFORE PUBLISH</div>
 
-# PUT成功より先に、playlistへseqを出さない
+# segmentの保存前に公開すると、<br>Viewerは404になる
 
-<div class="order-contrast">
-  <div class="bad-order">
-    <span>BAD</span>
-    <div>commit</div><b>→</b><div>Viewer GET</div><b>→</b><div class="error">404</div>
-  </div>
-  <div class="good-order">
-    <span>GOOD</span>
-    <div>S3 PUT完了</div><b>→</b><div>commit</div><b>→</b><div>playlist更新</div>
-  </div>
+<div class="d">
+ <div class="d-label d-warn">順序を逆にした場合</div>
+ <div class="d-row"><div class="d-node warn"><b>playlistへ先に掲載</b></div><i class="d-arrow">→</i><div class="d-node warn"><b>ViewerがGET</b></div><i class="d-arrow">→</i><div class="d-node warn fill"><b>本体がまだない</b><small>404</small></div></div>
+ <div class="d-label" style="margin-top:28px">今回の順序</div>
+ <div class="d-row"><div class="d-node blue"><b>本体のPUT成功</b></div><i class="d-arrow">→</i><div class="d-node blue"><b>playlistへ掲載</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><b>Viewerが取得可能</b></div></div>
 </div>
 
 <!--
@@ -1876,25 +1769,24 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
 
 ---
 
-<div class="kicker">PUBLIC SAMPLE · RETRY POLICY</div>
+<div class="kicker">RETRY · PUBLIC SAMPLE</div>
 
-# サンプルは、同じファイルを<br>最大3回まで再送する
+# 同じPUTを最大3回試し、失敗したら公開を進めない
 
-<div class="retry-steps">
-  <div><b>attempt 1</b><span>失敗</span><small>250 ms</small></div>
-  <i>→</i>
-  <div><b>attempt 2</b><span>失敗</span><small>500 ms</small></div>
-  <i>→</i>
-  <div><b>attempt 3</b><span>成功 / error</span><small>終了</small></div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>1回目が失敗</span><b>250 ms待つ</b></div><i class="d-arrow">→</i><div class="d-node"><span>2回目が失敗</span><b>500 ms待つ</b></div><i class="d-arrow">→</i><div class="d-node"><span>3回目</span><b>最後の試行</b></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-row"><div class="d-node blue fill"><span>いずれかで成功</span><b>playlistのPUTへ進む</b></div><div class="d-node warn"><span>3回とも失敗</span><b>公開せずerrorを残す</b></div></div>
+ <div class="d-caption">初回を含めて最大3回。同じURLへ同じ内容を送る</div>
 </div>
-
-<div class="bottom-claim warning">segment PUTが失敗したら、そのsegmentをplaylistへ載せない</div>
+<div class="bottom-claim">segment本体のPUTが成功するまで、そのsegmentをplaylistへ載せない</div>
 
 <!--
 [本編必須: アップロード失敗時の扱い]
 
-サンプルアプリは各PUTを最大3回試します。
-segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publisherのerrorとして残します。
+各PUTは初回を含め最大3回試します。ここではsegment本体のPUTを例にしています。
+成功すれば次のplaylist PUTへ進みます。3回とも失敗した場合はerrorを残し、後続の公開も進めません。
+playlist PUT自体にも同じretry方針を適用しています。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
@@ -1903,33 +1795,23 @@ segment保存が3回とも失敗した場合、playlist PUTへ進まず、Publis
 
 ---
 
-<div class="kicker">OUT-OF-ORDER RACE</div>
+<div class="kicker">UPLOAD ORDER · MOMENTNOW</div>
 
-# upload完了順と、再生順は一致しないことがある
+# uploadの完了順と、再生順は別に扱う
 
-<div class="race-lanes">
-  <div class="race-time-axis">時間 →</div>
-  <div class="race-row"><b>seg 1</b><div class="race-track"><span class="race-bar medium">upload 1</span><em>commit 1</em></div></div>
-  <div class="race-row"><b>seg 2</b><div class="race-track"><span class="race-bar fast">upload 2</span><em class="early">commit 2</em></div></div>
-  <div class="race-row"><b>seg 3</b><div class="race-track"><span class="race-bar slow">upload 3</span><em>commit 3</em></div></div>
+<div class="d">
+ <div class="d-axis"><span>upload開始</span><span>時間 →</span></div>
+ <div class="d-lane"><b>segment 1</b><span class="d-bar blue" style="grid-column:2/10">upload</span><span style="grid-column:10/14">commit 1</span></div>
+ <div class="d-lane"><b>segment 2</b><span class="d-bar blue" style="grid-column:3/7">upload</span><span style="grid-column:7/14">commit 2（先に完了）</span></div>
+ <div class="d-lane"><b>segment 3</b><span class="d-bar blue" style="grid-column:4/11">upload</span><span style="grid-column:11/14">commit 3</span></div>
+ <div class="d-row"><div class="d-node"><span>完了順の例</span><b>2 → 1 → 3</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>MomentNowの現状</span><b>sequence順へ整列</b><small>1 → 2 → 3</small></div></div>
 </div>
-
-<div class="order-equation">
-  <span>completion</span><code>2, 1, 3</code><b>≠</b><span>playback</span><code>1, 2, 3</code>
-</div>
-
-<div class="publication-status">
-  <p><b>MomentNowの現状</b><span>sequence順へ整列。欠番は待たない</span></p>
-  <p><b>改善案 · 未実装</b><span>欠番を待ち、連続した範囲だけ公開</span></p>
-</div>
+<div class="bottom-claim">整列だけでは、途中の欠番を待てない</div>
 
 <!--
-[Optional detail: 時間が厳しい場合は省略]
-
-upload処理は待機中に完了順が入れ替わる可能性があります。
-図は左から右を時間とし、seg 2、seg 1、seg 3の順でPUTが完了する例です。各commitは、そのsegmentのPUT完了後に始めます。
-iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをseq順へ並べ直しますが、欠番を待つ契約ではありません。
-より安全にするなら、サーバーが連続したseqまでの「公開済み境界」を管理します。
+MomentNowはsegmentごとにTaskでuploadするため、await中に完了順が入れ替わる可能性があります。
+各commitはそのsegmentのPUT成功後に行います。commit APIはsequence順へ整列します。
+右下の1・2・3は全segmentが揃った時点の順序です。次のページで、揃う前に何が公開されるかを区別します。
 
 [Sources]
 - MomentNow-Lambda/src/commit.ts
@@ -1937,28 +1819,73 @@ iOSはseqを必ず送ります。現在のcommit APIはplaylist内のsegmentをs
 
 ---
 
-<div class="kicker">SERVER · OBJECT SEMANTICS</div>
+<div class="kicker">PUBLICATION GAP · CURRENT / PROPOSAL</div>
 
-# cache方針は、playlistとsegmentで分ける
+# 欠番があるとき、どこまで公開するか
 
-<div class="cache-table server-cache-table">
-  <div class="cache-head"><span>OBJECT</span><span>CACHE</span><span>HTTP</span></div>
-  <div class="dynamic"><b>playlist.m3u8</b><span>no-store / no-cache</span><code>毎回最新を取得</code></div>
-  <div class="immutable"><b>init.mp4 / m4s</b><span>max-age=31536000</span><code>Range / 206（部分取得）</code></div>
+<div class="d">
+ <div class="d-label">segment 1・3が保存済み、segment 2はまだ届かない時点</div>
+ <div class="d-queue"><span>1 保存済み</span><span class="warn">2 未到着</span><span>3 保存済み</span></div>
+ <div class="d-pair" style="margin-top:24px">
+  <div class="d-node blue"><span>MomentNow · 現状</span><b>1・3を番号順に掲載</b><small>欠番は待たない</small><span class="d-chip blue">1</span><span class="d-chip blue">3</span></div>
+  <div class="d-node future"><span>改善案 · 未実装</span><b>連続した1だけを公開</b><small>3は2が届くまで保留</small><span class="d-chip blue">1</span><span class="d-chip missing">2待ち</span><span class="d-chip missing">3保留</span></div>
+ </div>
 </div>
+<div class="bottom-claim">番号順への整列と、連続した範囲だけの公開は別の制御</div>
 
-<div class="bottom-claim compact">S3 / CloudFrontでの設定</div>
+<!--
+1と3が保存され、2がまだ届かない例です。現在のcommit APIは欠番を待つ契約ではありません。
+改善するなら連続したsequenceまでの公開済み境界を管理し、2が来るまで3を保留します。これは未実装の設計案であり、現状の保証として説明しません。
+[Sources]
+- MomentNow-Lambda/src/commit.ts
+-->
+
+---
+
+<div class="kicker">CACHE · MUTABLE PLAYLIST</div>
+
+# playlistは同じURLでも内容が増える
+
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>前回の内容</span><b>segment 1</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>サーバーの最新</span><b>segment 1・2</b></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-row"><div class="d-node warn"><span>古い内容を使い続けると</span><b>segment 2を発見できない</b></div><div class="d-node blue"><span>今回のキャッシュ方針</span><b>no-store / no-cache</b><small>古いplaylistを使い続けない</small></div></div>
+</div>
+<div class="bottom-claim">変わるのはplaylistの内容。Playerは同じURLを繰り返し取得する</div>
 
 <!--
 [本編必須: キャッシュ制御]
 
-playlistは同じURLの内容が増えるためキャッシュさせません。
-initとm4sは一度置いたら変えず長期cacheし、PlayerのRange requestには206で返します。個人アプリもobjectの可変性で方針を分けます。
+playlistは同じURLの本文が変化します。
+SampleおよびMomentNowはplaylistにno-store、no-cache等を設定します。no-storeとno-cache自体は同義ではなく、前者は保存禁止、後者は再利用前の検証を求める指定です。
+CDNでも古いplaylistを固定的に配らない設定が必要です。
 
 [Sources]
 - iosdc2026HLSSample/server/server.py
 - MomentNow-Lambda/src/create_stream.ts
 - MomentNow-Lambda/src/presign.ts
+-->
+
+---
+
+<div class="kicker">CACHE · IMMUTABLE MEDIA</div>
+
+# initとsegmentは内容を変えず、<br>キャッシュを再利用する
+
+<div class="d">
+ <div class="d-row"><div class="d-node blue"><span>保存済み</span><b>000001.m4s</b><small>同じURLでは<br>内容を変えない</small></div><i class="d-arrow">→</i><div class="d-node"><span>CDN / キャッシュ</span><b>完成Dataを保持</b><small>max-age=31536000</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>Viewer</span><b>同じDataを取得</b><small>再利用できる</small></div></div>
+ <div class="d-row"><div class="d-node"><span>次のsegment</span><b>000002.m4sは別URL</b></div><div class="d-node"><span>部分取得への対応</span><b>Range request / 206</b></div></div>
+</div>
+<div class="bottom-claim">更新されるplaylistと、変わらないメディアで方針を分ける</div>
+
+<!--
+initとm4sは一度保存したら変更しないため長期cacheします。SampleのファイルサーバーとMomentNowのS3 objectでmax-age=31536000を設定しています。
+配信ごとに保存先が異なり、segmentは番号付きの別URLなので、新しいsegmentと古いcacheが衝突しません。
+Range / 206はキャッシュ方針とは別の部分取得機能です。取得済みだから全てのViewerが必ず通信ゼロになるという図にはしていません。
+[Sources]
+- iosdc2026HLSSample/server/server.py
+- MomentNow-Lambda/src/presign.ts
+- MomentNow-Lambda/src/create_stream.ts
 -->
 
 ---
@@ -1982,76 +1909,44 @@ Writerが受け取れない問題と、生成済みsegmentが送信待ちにな�
 
 ---
 
-<div class="kicker">CALLBACK TO TASK</div>
+<div class="kicker">CALLBACK TO TASK · PUBLIC SAMPLE</div>
 
-# メディア処理を、HTTP待ちから切り離す
+# callbackはすぐ戻り、HTTPは別のTaskで待つ
 
-<div class="async-boundary-flow">
-  <div class="async-boundary-stage">
-    <span>WRITING QUEUE · CALLBACK</span>
-    <b>WriterのDataを受け取る</b>
-    <small>init / mediaを受け取り<br>すぐ戻る</small>
-    <code>Recorder</code>
-  </div>
-  <i>→</i>
-  <div class="async-boundary-stage bridge">
-    <span>BRIDGE</span>
-    <b>Dataを順番に受け渡す</b>
-    <small>callbackの値を<br>非同期の列へ変換</small>
-    <code>AsyncThrowing<wbr>Stream</code>
-  </div>
-  <i>→</i>
-  <div class="async-boundary-stage task">
-    <span>SWIFT TASK</span>
-    <b>HTTPをawaitする</b>
-    <small>PUTとplaylist更新を<br>順番に待つ</small>
-    <code>Publisher</code>
-  </div>
+<div class="d">
+ <div class="d-caption"><b>Writer delegate</b> の値を <b>writingQueue</b> へ戻して受け渡す</div>
+ <div class="d-axis"><span>録画中</span><span>時間 →</span></div>
+ <div class="d-lane"><b>Capture</b><span class="d-bar" style="grid-column:2/14">frame / audio blockを継続して受信</span></div>
+ <div class="d-lane"><b>受け渡し</b><span class="d-bar blue" style="grid-column:2/5">yield 1</span><span class="d-bar blue" style="grid-column:6/9">yield 2</span><span class="d-bar blue" style="grid-column:10/14">yield 3</span></div>
+ <div class="d-lane"><b>HTTP Task</b><span class="d-bar blue" style="grid-column:2/10">segment 1とplaylistをawait</span><span class="d-bar blue" style="grid-column:10/14">次を送信</span></div>
+ <div class="d-caption">受け渡しはAsyncThrowingStream。Taskが順番に取り出す</div>
 </div>
-
-<div class="async-boundary-types">
-  <span><b>HLSFragment</b> = init / mediaのData</span>
-</div>
-
-<div class="bottom-claim warning">送信待ちに上限なし。送信が遅いとsegmentが滞留する</div>
+<div class="bottom-claim">HTTP待ちでcallbackを止めない。ただし、送信待ちの上限は未設定</div>
 
 <!--
-AVAssetWriterDelegateはwritingQueue上で呼ばれます。
-callbackではHLSFragmentをAsyncThrowingStreamへ渡してすぐ戻り、次のCMSampleBuffer処理を止めません。
-HLSFragmentはinitializationまたはmediaのDataと付随情報を表す、サンプルアプリ内の値です。
-AsyncThrowingStreamは同期callbackから届く値を、Task側がfor awaitで順番に読める形へ変換します。
-HTTP処理はHLSStreamPublisherのTaskでawaitします。
-AsyncThrowingStreamは既定の無制限bufferで作り、Publisherは各fragmentのHTTP処理を順番に待っています。
-この分離でCapture callbackのHTTP待ちは避けられますが、継続的に上り回線が遅いと送信待ちDataと遅延が増えます。
-次のページではWriter側のdropと、送信側に残る改善課題を区別します。
+AVAssetWriterDelegate自体のcallback queueをwritingQueueと断定しません。Sampleのdelegate実装は受け取ったDataをwritingQueue.asyncへ渡し、そこでsequenceとContinuationを操作します。
+continuation.yieldでHLSFragmentを渡したらすぐ戻り、PublisherのTaskがfor awaitで取り出してPUTとplaylist更新を順番にawaitします。
+図は処理の重なりの模式図で、実行時間は実測ではありません。AsyncThrowingStreamは既定の無制限bufferなので、送信が遅いと生成済みDataが滞留します。
+
+
 -->
 
 ---
 
-<div class="kicker">BACKPRESSURE DECISION</div>
+<div class="kicker">BACKPRESSURE · TWO LOCATIONS</div>
 
-# Writerの詰まりと、送信待ちは別の問題
+# Writer側のdropと、生成後の送信待ち
 
-<div class="drop-timeline">
-  <div class="drop-lane"><b>Capture</b><span>video 1</span><span>audio 1</span><span>video 2</span><span>audio 2</span></div>
-  <div class="drop-lane writer"><b>Writer</b><span class="append">append</span><span class="append">append</span><span class="busy">busy</span><span class="dropped">drop</span></div>
+<div class="d">
+ <div class="d-row d-backpressure"><div class="d-node"><span>生成前</span><b>CMSampleBuffer</b><small>frame / audio block</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>Writer</span><b>圧縮・分割</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>生成後</span><b>segment Data</b><small>送信待ちの列</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>HTTP</span><b>送信</b></div></div>
+ <div class="d-pair" style="margin-top:24px"><div class="d-node warn"><span>Writer側 · 実装済み</span><b>受け取れないbufferをdrop</b><small>映像のカクつき・音声の欠けを許容</small></div><div class="d-node future"><span>送信側 · 改善案</span><b>滞留量の上限と停止判断</b><small>Sampleでは未実装</small></div></div>
 </div>
-
-<div class="drop-choice">
-  <div class="wait-choice"><span>Writer側 · 実装済み</span><b>受け取れないCMSampleBufferをdrop<br>映像のカクつき・音声の欠けを許容</b></div>
-  <div class="drop-choice-current"><span>送信側 · 今後の改善</span><b>送信待ち量に上限を設ける<br>上限超過時の停止判断を追加</b></div>
-</div>
-
-<div class="bottom-claim warning">Writer側のdropでは、生成済みsegmentの送信待ちは減らない</div>
+<div class="bottom-claim">別の位置・別のデータに対する問題。送信待ちは現在、上限なし</div>
 
 <!--
-VideoとAudioのDataOutputは一定間隔でCMSampleBufferをpushし続けます。
-Writerが受け取れずappendImmediatelyがfalseを返した場合、この実装ではbufferを保留せずreturnします。
-Writer側では受け入れ待ちのbufferを保留せず、映像のカクつきや音声の欠けを許容しています。
-これは生成前のCMSampleBufferに対する判断で、生成済みsegmentの送信待ちは減らしません。
-サンプルには送信待ち量の上限や上限超過時の停止判断は未実装です。今後の改善として分けて示します。
-ライブ遅延全体や継続的な帯域不足を、このdropだけで解消できるわけではありません。
-appendImmediatelyがthrowした場合はWriterの失敗としてstreamをerrorで閉じます。
+生成前のCMSampleBufferと、生成後のsegment Dataを区別します。
+appendImmediatelyがfalseの場合にdropするのは前者です。生成済みsegmentの待ち行列には作用しません。
+生成に対して送信が遅い状態が続くと滞留が増えます。上限と超過時の停止判断は今後の改善として扱い、ライブ遅延全体を解消する実装済み対策とは説明しません。
 
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
@@ -2090,26 +1985,21 @@ finishWritingによって最後のsegmentがdelegateへ届く可能性がある�
 
 ---
 
-<div class="kicker">DRAIN BEFORE FINISH</div>
+<div class="kicker">STOP · RECORDER</div>
 
-# 停止後は、HLS公開と写真保存の完了を待つ
+# Captureを止めてから、<br>両Writerの生成を完了させる
 
-<div class="drain-lanes">
-  <div><b>1 Recorder</b><span>capture停止<br>両Writerをfinish</span><small>HLS Data / MP4を確定</small></div>
-  <i>→</i>
-  <div><b>2 写真保存</b><span>完成MP4 → 写真</span><small>HTTP完了を待たずに保存</small></div>
-  <i>→</i>
-  <div class="hot"><b>3 公開完了</b><span>uploadTask.value</span><small>ENDLIST PUTまで待つ</small></div>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>① Capture停止</span><b>新しい入力を止める</b></div><i class="d-arrow">→</i><div class="d-node"><span>② writingQueue</span><b>投入済みcallbackを処理</b></div></div>
+ <div class="d-arrow down">↓</div>
+ <div class="d-row"><div class="d-node blue fill"><span>③ HLS Writerをfinish</span><b>最後のDataを受信</b><small>fragment streamを閉じる</small></div><i class="d-arrow">→</i><div class="d-node green fill"><span>④ 保存用Writerをfinish</span><b>MP4の完成を確認</b><small>URLまたは生成エラーを返す</small></div></div>
 </div>
-
-<div class="bottom-claim">HLSの送信結果と、端末への保存結果を別々に確認する</div>
+<div class="bottom-claim">Sampleの現在の呼び出し順。HTTPの送信Taskはこの間も継続する</div>
 
 <!--
-SampleHLSStreamer.stopRecordingの順序です。
-Recorder.stopがcaptureを止め、HLS Writerとfragment streamを閉じ、保存用MP4を完成させます。
-MP4が完成したら写真保存を開始します。その間もPublisherのTaskは並行して送信を続けています。
-写真保存を待ったあと、uploadTask.valueで最後のsegmentとENDLIST公開まで待ちます。図の3は送信開始ではなく完了の確認です。
-写真への保存失敗時は完成MP4を保持し、再試行できます。HLSの送信に失敗していても、完成したMP4は写真へ保存します。
+HLSSegmentRecorder.stopの現在の順序です。まずsessionQueue上でCaptureSession.stopRunningの完了を待ち、その後writingQueue上で投入済みcallbackの後に終了処理を行います。
+HLS Writerをfinishし、最後のDataを受けてfragment streamを閉じます。その後、保存用WriterをfinishしてMP4を完成させます。
+この2つのWriterのfinishを同時に開始する実装ではありません。途中で一方が失敗していても、もう一方の結果を独立に扱います。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
@@ -2119,18 +2009,40 @@ MP4が完成したら写真保存を開始します。その間もPublisherのTa
 
 ---
 
-<div class="kicker">PUBLIC DEMO → PRODUCTION</div>
+<div class="kicker">STOP · HTTP AND PHOTOS</div>
 
-# MomentNowで採用した4つの運用制御
+# 写真保存は、HTTP送信の完了を待たずに始める
 
-<div class="production-additions">
-  <div><b>AUTH</b><span>user / group ownership</span></div>
-  <div><b>PRESIGN</b><span>S3の1ファイル限定・署名付きURL</span></div>
-  <div><b>COMMIT</b><span>公開順とplaylistの同時更新を制御</span></div>
-  <div><b>DELIVERY</b><span>CloudFront / ticket / status</span></div>
+<div class="d">
+ <div class="d-lane d-axis-grid"><b>時間 →</b><span style="grid-column:2/5">録画中</span><span style="grid-column:8/11">停止操作</span><span style="grid-column:11/14">終了処理</span></div>
+ <div class="d-lane"><b>HLS送信</b><span class="d-bar blue" style="grid-column:2/10">生成済みsegmentを順に送信</span><span class="d-bar blue" style="grid-column:10/14">ENDLIST公開</span></div>
+ <div class="d-lane"><b>端末MP4</b><span class="d-bar green" style="grid-column:2/8">撮影中から生成</span><span class="d-bar green" style="grid-column:8/11">MP4完成</span></div>
+ <div class="d-lane"><b>写真保存</b><span class="d-bar green" style="grid-column:11/14">写真へ追加</span></div>
+ <div class="d-row"><div class="d-node blue"><span>HLSの結果</span><b>公開完了 / 送信エラー</b></div><div class="d-node green"><span>写真保存の結果</span><b>保存成功 / 完成MP4を保持</b><small>保存失敗時は再試行</small></div></div>
 </div>
+<div class="bottom-claim">2つの結果を別々に確認。完了順は通信・保存の状況によって変わる</div>
 
-<div class="bottom-claim">commit APIは必須ではない。サンプルはiOSでplaylistと公開順を管理する</div>
+<!--
+図は並行する経路と依存関係の模式図です。ENDLIST公開と写真保存の完了順は固定ではありません。
+SampleHLSStreamerはRecorder.stopでMP4の結果を受け取るとonLocalRecordingを呼びます。HTTP Taskは録画中から進んでおり、その完了を待たず写真保存を開始します。
+写真保存の処理後、uploadTask.valueをawaitして最終snapshotを得ます。HTTPに失敗していても完成MP4は保存対象です。写真保存に失敗した場合は完成MP4を保持し、再試行できます。
+[Sources]
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/PhotoVideoSaver.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+-->
+
+---
+
+<div class="kicker">MOMENTNOW · OPERATIONAL RESPONSIBILITIES</div>
+
+# 4つの運用制御を、配信の担当箇所へ配置
+
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>iPhone / user</span><b>HLSを生成</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>S3</span><b>Dataを保存</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>playlist / CDN</span><b>Viewerへ公開</b></div></div>
+ <div class="d-row"><div class="d-node"><span>AUTH</span><b>誰の配信か</b><small>user / group</small></div><div class="d-node blue"><span>PRESIGN</span><b>どこへPUTできるか</b><small>ファイル・期限を限定</small></div><div class="d-node blue"><span>COMMIT</span><b>何を公開するか</b><small>playlist更新を制御</small></div><div class="d-node"><span>DELIVERY</span><b>誰に配るか</b><small>CloudFront / ticket / status</small></div></div>
+</div>
+<div class="bottom-claim">MomentNowで選んだ配置。SampleはiOS側でplaylistと公開順を管理</div>
 
 <!--
 iosdc2026HLSSampleはMacを小さなobject serverとして使います。
@@ -2164,7 +2076,7 @@ iosdc2026HLSSampleはMacを小さなobject serverとして使います。
   <div class="fit-scale"><i></i></div>
   <div class="fit-side bad">
     <span>USE A MEDIA PLATFORM</span>
-    <b>大規模・長時間・複数画質の自動切替</b>
+    <b>大規模・長時間<br>複数画質の自動切替</b>
     <small>厳しい可用性要件にも対応したい</small>
   </div>
 </div>
@@ -2184,16 +2096,15 @@ class: closing
 
 <div class="kicker">TAKEAWAYS</div>
 
-# 端末内で生成したHLSを、撮影中から公開する
+# 端末内で生成し、保存できた範囲を公開する
 
-<div class="takeaway-grid">
-  <div><b>01</b><span><strong>生成 · Writer</strong>Camera / Micの入力からHLS用Dataを作る</span></div>
-  <div><b>02</b><span><strong>区切り · Boundary</strong>IDRとsegment intervalをそろえる</span></div>
-  <div><b>03</b><span><strong>公開 · Upload</strong>Dataを保存してからplaylistへ載せる</span></div>
-  <div><b>04</b><span><strong>終了 · Finish</strong>全送信とENDLISTの公開を待つ</span></div>
+<div class="d d-row">
+ <div class="d-node"><span>生成</span><b>Camera / Mic<br>からWriterへ</b><small>撮影データ<br>を入力</small></div><i class="d-arrow">→</i>
+ <div class="d-node"><span>区切り</span><b>約2秒の<br>fMP4 Data</b><small>IDRと境界を揃える</small></div><i class="d-arrow">→</i>
+ <div class="d-node"><span>公開</span><b>保存成功後に<br>playlist更新</b><small>ViewerがGET</small></div><i class="d-arrow">→</i>
+ <div class="d-node"><span>終了</span><b>最後の送信と<br>ENDLIST</b><small>保存MP4も完了確認</small></div>
 </div>
-
-<div class="takeaway-path"><b>端末内生成</b><span>AVCaptureSession → DataOutput → Receiver → AVAssetWriterDelegate</span></div>
+<div class="bottom-claim">AVCaptureSession → DataOutput → Receiver → AVAssetWriterDelegate</div>
 
 <!--
 [Timing checkpoint: 34:30]
@@ -2286,22 +2197,21 @@ class: timing-priming
 
 <div class="kicker">APPENDIX · AAC PRIMING</div>
 
-# 10秒は、音声圧縮のための余白
+# 10秒の開始位置は、音声の時刻を前へ動かす余白
 
-<ul>
-  <li>AACは圧縮の都合で、先頭に準備用の音声（priming）を加える</li>
-  <li>Apple HLSでは、その分だけ音声の時刻を前へずらして補償する</li>
-</ul>
-
-<p class="lead">映像・音声の開始位置を後ろへずらし、<br>音声の時刻が負にならないようにする</p>
+<div class="d">
+ <div class="d-lane d-axis-grid"><b>時間 →</b><span style="grid-column:2/5">0秒</span><span style="grid-column:8/14">映像の開始位置：10秒</span></div>
+ <div class="d-lane"><b>映像</b><span class="d-bar blue" style="grid-column:8/14">映像本体</span></div>
+ <div class="d-lane"><b>AAC音声</b><span class="d-bar warn" style="grid-column:5/8">priming</span><span class="d-bar blue" style="grid-column:8/14">音声本体</span></div>
+ <div class="d-caption">priming分だけ音声の時刻を前へ補償しても、0秒より前にならない</div>
+</div>
 
 ```swift
 private let startTimeOffset = CMTime(value: 10, timescale: 1)
 writer.initialSegmentStartTime = startTimeOffset
 ```
 
-<div class="bottom-claim">10秒はAppleが示す設定例。再生開始まで10秒待つ意味ではない</div>
-<div class="source">Apple WWDC20: Author fragmented MPEG-4 content with AVAssetWriter（16:16以降）</div>
+<div class="bottom-claim">模式図。10秒はAppleの設定例であり、再生開始まで待つ時間ではない</div>
 
 <!--
 AAC encoderは、正しくencode / decodeするために先頭へprimingを加えます。
@@ -2325,21 +2235,15 @@ class: formula-slide
 
 <div class="kicker">APPENDIX · ONE DELTA</div>
 
-# 時刻補正は、全サンプルの平行移動
+# 最初の映像で移動量を決め、<br>すべてのsampleに適用
 
-<div class="formula-large">
-  <span>delta</span>
-  <b>=</b>
-  <span class="formula-expression">10s − firstVideoPTS</span>
+<div class="d">
+ <div class="d-row"><div class="d-node"><span>移動量を最初に1回だけ決定</span><b>delta = 10s − firstVideoPTS</b></div></div>
+ <div class="d-pair"><div class="d-node blue"><span>映像の全sample</span><b>sourcePTS ＋ delta</b></div><div class="d-node blue"><span>音声の全sample</span><b>sourcePTS ＋ delta</b></div></div>
+ <div class="d-time-track"><div>映像 100.00 → 10.00</div><div>音声 100.02 → 10.02</div></div>
+ <div class="d-time-gap">同じ−90秒。元の0.02秒の時間差を保つ</div>
 </div>
-
-<div class="formula-large secondary">
-  <span>adjustedPTS</span>
-  <b>=</b>
-  <span class="formula-expression">sourcePTS + delta</span>
-</div>
-
-<div class="code-caption">PTS：映像や音声を提示する時刻。移動量は最初の映像で一度だけ決める</div>
+<div class="bottom-claim">映像と音声それぞれの先頭を、別々に10秒へ合わせない</div>
 
 <!--
 CaptureのPTSは配信開始からの経過時間ではなく、CaptureSessionの共通の時計上の位置です。
@@ -2357,29 +2261,25 @@ CaptureのPTSは配信開始からの経過時間ではなく、CaptureSession�
 
 <div class="kicker">APPENDIX · COPY TIMING</div>
 
-# 映像・音声は変えず、時刻情報だけを補正
+# コピーの内容はそのまま、PTSと有効なDTSを補正
+
+<div class="d d-row d-compact"><div class="d-node"><span>元のbuffer</span><b>映像・音声 ＋ 元の時刻</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>独立したコピー</span><b>同じ内容 ＋ 補正した時刻</b></div></div>
 
 ```swift
-let timingInfos = try sampleTimingInfos().map { info in
-    var t = info
-    t.presentationTimeStamp = t.presentationTimeStamp + offset
-    if info.decodeTimeStamp.isValid {
-        t.decodeTimeStamp = t.decodeTimeStamp + offset
-    }
-    return t
+var t = info
+t.presentationTimeStamp = t.presentationTimeStamp + offset
+if info.decodeTimeStamp.isValid {
+    t.decodeTimeStamp = t.decodeTimeStamp + offset
 }
-let copied = try CMSampleBuffer(
-    copying: self, withNewTiming: timingInfos)
+return t
 ```
-
-<div class="code-caption">PTSと、有効なDTSを同じ量だけ動かす</div>
-<div class="source">HLSSegmentRecorder.swift: offsettingTiming（時刻コピー部分の抜粋）</div>
+<p class="d-note">timing infoを変換するmap内部の抜粋。新しいtimingでbufferをコピーする</p>
 
 <!--
 CMSampleBufferの映像・音声データはそのままに、timing infoを差し替えたコピーを作ります。
 PTSだけでなく、frameをdecodeする時刻であるDTSも、有効な場合は同じ量だけ補正します。
 サンプルのoffsettingTimingでは、この後にoutputPresentationTimeStampも同じ量だけ補正しています。
-ここは処理の抜粋で、エラー処理とoutput PTSの更新は省略しています。
+画面はsampleTimingInfos().mapの内部の抜粋です。新しいtiming配列をCMSampleBuffer(copying:withNewTiming:)へ渡してコピーを作ります。エラー処理、コピー作成の呼び出し、output PTSの更新は画面から省略しています。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift

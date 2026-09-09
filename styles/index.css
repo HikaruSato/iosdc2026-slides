@@ -1,3 +1,5 @@
+@import './diagrams.css';
+
 :root {
   --ink: #111111;
   --paper: #f4f0e6;
@@ -48,6 +50,7 @@ body,
 }
 
 .slidev-layout h1 {
+  text-wrap: balance;
   color: var(--ink);
   font-size: 50px;
   font-weight: 800;
@@ -870,7 +873,7 @@ body,
   display: grid;
   grid-template-columns: 1fr;
   margin: 24px auto 0;
-  width: 900px;
+  width: 100%;
 }
 
 .chapter-overview > div {
@@ -1125,7 +1128,7 @@ body,
 
 .frame-journey .storage,
 .frame-journey .viewer {
-  border-color: var(--success);
+  border-color: var(--accent-primary);
 }
 
 .frame-journey span,
@@ -1850,8 +1853,8 @@ body,
 
 .recorder-object-output {
   align-items: center;
-  background: var(--success-soft);
-  border-color: var(--success);
+  background: var(--accent-primary-soft);
+  border-color: var(--accent-primary);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -3261,7 +3264,7 @@ body,
 }
 
 .stop-flow div:last-of-type {
-  border-color: var(--success);
+  border-color: var(--accent-primary);
 }
 
 .stop-flow b,
@@ -3281,6 +3284,7 @@ body,
 }
 
 .stop-flow i {
+  font-size: 26px;
   align-items: center;
   color: var(--muted);
   display: flex;
@@ -3847,7 +3851,7 @@ body,
 }
 
 .duration-side.production {
-  border-color: var(--success);
+  border-color: var(--accent-secondary);
 }
 
 .duration-side span,
@@ -3927,7 +3931,7 @@ body,
 }
 
 .callback-mark {
-  background: var(--success);
+  background: var(--accent-primary);
 }
 
 .init-mark {
