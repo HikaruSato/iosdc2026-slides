@@ -856,6 +856,38 @@ MomentNowは同じく2つのWriterを使い、元動画として別途uploadし�
 
 ---
 
+<div class="kicker">WHY · STREAM AND LOCAL RECORDING</div>
+
+# 配信用と保存用で、優先するものを変える
+
+<div class="d d-pair">
+ <div class="d-node blue"><span>配信：H.264・720p</span><b>ブラウザーでの再生互換性</b><small>HEVCより幅広い再生環境を優先<br>解像度・bitrateを抑えて送信</small></div>
+ <div class="d-node green"><span>保存：HEVC・1080p</span><b>画質と端末容量の両立</b><small>配信より高い解像度を保持<br>HEVCの圧縮効率を利用</small></div>
+</div>
+<p class="d-note">数値は初期設定のままのものが多い。実ユーザーの声による最適化はこれから</p>
+<div class="bottom-claim">HLSでもHEVCは使える。今回は配信先との互換性でH.264を選択</div>
+
+<!--
+記事で明示している採用理由は、配信用H.264がブラウザー互換性、fMP4がAVFoundationとの相性とSafari / iOSでの再生、別の端末保存が通信・upload失敗への備えです。
+ここから設定の意味を説明しますが、すべての値を比較検証して決めたわけではありません。
+MomentNowは想定ほど利用が広がらず、実ユーザーの声を集めて設定の見直しにつなげるところまで十分にできていません。一度決めた値のままになっている設定が多い、というのが現状です。
+方式の性質や一般的なトレードオフと、私が実際に検証して選んだ理由を分けて話します。
+HLSそのものがHEVCを扱えないわけではありません。
+HEVCは同等の見た目の品質でH.264より高い圧縮効率を得られる方式です。ただし、このアプリの5 Mbpsで特定の画質や削減率を保証するものではありません。
+720×1280より1080×1920の方が画素数は2.25倍です。保存側は配信側より多くの細部を残せますが、実際の画質はcodec・bitrate・撮影条件にも依存します。
+5 Mbpsという数値自体はHLSやHEVCの規格が要求する値ではなく、現行実装の選択です。比較実験で得た最適値とは説明しません。
+SampleのMP4はMacへ送信しないので、その5 MbpsをHLSの上り帯域に足す必要はありません。MomentNowの元動画uploadは別経路です。
+
+[Sources]
+- https://zenn.dev/hs7/articles/080eac650f65ba （HLSの映像と音声仕様、なぜfMP4を使ったか、端末への動画保存）
+- https://support.apple.com/en-la/116944
+- https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
+-->
+
+---
+
 <div class="kicker">DATA OUTPUT · SERIAL QUEUE</div>
 
 # 映像と音声のcallbackを、1本のqueueで順に処理
@@ -942,15 +974,30 @@ Sampleはhd1920x1080で撮影し、保存用Writerは1080×1920、配信用Write
  <div class="d-row"><div class="d-node"><span>NWPath</span><b>回線の状態</b></div><div class="d-node"><span>API応答</span><b>準備の待ち時間</b></div><div class="d-node"><span>test upload</span><b>上り速度</b></div></div>
  <div class="d-arrow down">↓</div><div class="d-label">MomentNow：開始前に1つ選択</div>
  <div class="d-row"><div class="d-node blue"><span>Low · 480 × 854</span><b>0.9 Mbps</b></div><div class="d-node blue"><span>Medium · 720 × 1280</span><b>1.5 Mbps</b></div><div class="d-node blue"><span>High · 720 × 1280</span><b>2.5 Mbps</b></div></div>
- <div class="d-caption">Sampleは720 × 1280・1.5 Mbps固定</div>
+ <div class="d-caption">Sampleは720 × 1280・1.5 Mbps固定<br>値を上げるほど、画質に使えるデータ量と通信量が増える</div>
 </div>
-<div class="bottom-claim">選んだ品質で配信。配信途中の自動画質切替（ABR）は行わない。<br>(今回の構成ではできない)</div>
+<div class="bottom-claim">開始前に選んだ単一品質で配信。複数品質を公開しないため、視聴側のABRは非対応</div>
 
 <!--
 [本編必須: 品質・ビットレートの選択]
 
 個人アプリではNWPathと小さなprobe PUTから、high、medium、lowの1品質を配信開始前に選びます。
 途中でrenditionを切り替えるABRではなく、端末の上り回線に合わせた開始時の選択です。
+単一品質のHLSだけを公開するため、Playerには品質の切替先がありません。端末内HLS生成そのものがABRを不可能にするという意味ではありません。
+配信端末が途中からencode bitrateを変える制御も、現在の実装にはありません。
+bitrateを上げるほど映像の細部に使えるデータ量は増えますが、上り回線と視聴側の回線にも余裕が必要です。ここではbyte数への換算はせず、この関係だけを補足します。
+0.9 / 1.5 / 2.5 Mbpsは現行アプリの3段階であり、一般的な推奨値や実ユーザーの評価に基づく最適値ではありません。
+AVVideoAverageBitRateKeyは圧縮に使う平均bitrateの設定です。各segmentのサイズや瞬間的な上限を保証する値ではなく、実際の送信には音声・コンテナ・HTTP等の分も加わります。
+記事の約2.7 Mbps（映像2771 kb/s）と93 kbps（音声）はffprobeによる当時の出力例で、現行コードの設定値2.5 Mbps / 96 kbpsとは区別します。
+記事の30 fpsも出力例です。現在のSampleとMomentNowにはactiveVideoMinFrameDuration / activeVideoMaxFrameDurationで30 fpsに固定する指定はありません。
+
+[Sources]
+- https://developer.apple.com/documentation/http-live-streaming/creating-a-multivariant-playlist
+- https://developer.apple.com/documentation/avfoundation/avvideoaveragebitratekey
+- https://zenn.dev/hs7/articles/080eac650f65ba （ffprobeの出力例）
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveHLSStreamer.swift
 -->
 
 ---
@@ -984,11 +1031,38 @@ videoOutput.videoSettings = [
 DataOutputからは未圧縮映像のpixel bufferを受け取ります。
 H.264への圧縮はAVAssetWriterInputのoutputSettingsが担当します。
 HighはApple SDKで指定できるH.264 profileの名前です。
-公開サンプルは説明しやすい1.5 Mbps固定です。個人アプリは上り回線を優先し、品質設定ごとに0.9、1.5、2.5 Mbpsから選びます。
+公開サンプルは1.5 Mbps固定です。個人アプリは上り回線に応じて、品質設定ごとに0.9、1.5、2.5 Mbpsから選びます。段階ごとの数値を、実ユーザーの評価に基づく最適値としては示しません。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 - MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
+-->
+
+---
+
+<div class="kicker">WHY · PIXEL FORMAT</div>
+
+# 入力形式は、色変換とメモリー転送量に効く
+
+<div class="rationale-rows">
+ <div><b>Y′CbCr 4:2:0</b><strong>輝度と色差</strong><span>BGRAより小さい画素表現</span></div>
+ <div><b>8-bit・BiPlanar</b><strong>8 bit・2つの面</strong><span>輝度と色差を分けて格納</span></div>
+ <div><b>FullRange</b><strong>輝度：0〜255</strong><span>画素値の範囲を指定</span></div>
+</div>
+<p class="d-note">Captureの対応形式を使い、BGRAへの不要な変換を避けるのが基本</p>
+<div class="bottom-claim">FullRangeは今回の選択。HLSが要求する入力形式ではない</div>
+
+<!--
+長い定数名を分けて読むページです。4:2:0は輝度より色差のサンプル数を少なくする表現、8は各成分8 bit、BiPlanarは輝度面と色差面の2-planeを表します。
+Apple TN3121は、BGRAを無条件に選ぶとネイティブ形式からの変換とメモリー帯域の負担が生じると説明しています。8-bit 4:2:0は概ね1.5 byte/pixel、BGRAは4 byte/pixelです。
+どの形式がネイティブかは端末のactiveFormatに依存します。一般にはavailableVideoPixelFormatTypesを確認して、後段の処理が扱える形式を選びます。Sampleの現行コードはFullRangeを固定指定しており、形式を動的に選び直す実装ではありません。
+FullRangeは8-bit輝度に0〜255の範囲を使う指定です。解像度、HDR、H.264 High profile、色域が広いという意味ではありません。
+FullRangeをVideoRangeより常に高画質・高速と説明したり、すべての端末で変換が不要と断定したりはしません。
+記事のffprobeに出てくるyuvj420pや色のタグは、符号化後の出力例です。DataOutputの2-plane bufferのメモリ配置と同じものとして扱いません。
+
+[Sources]
+- https://developer.apple.com/documentation/technotes/tn3121-selecting-a-pixel-format-for-an-avcapturevideodataoutput
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
 ---
@@ -1000,10 +1074,10 @@ HighはApple SDKで指定できるH.264 profileの名前です。
 <div class="settings-table">
   <div class="settings-head"><span>KEY</span><span>VALUE</span><span>INTENT</span></div>
   <div><code>AVVideoCodecKey</code><b>H.264</b><span>広い再生互換性</span></div>
-  <div><code>Width / Height</code><b>480p / 720p</b><span>quality別に選択</span></div>
-  <div><code>AverageBitRate</code><b>0.9–2.5 Mbps</b><span>上り回線へ追従</span></div>
-  <div><code>ProfileLevel</code><b>High Auto</b><span>encoder profile</span></div>
-  <div><code>FrameReordering</code><b>false</b><span>decode順を単純化</span></div>
+  <div><code>Width / Height</code><b>480p / 720p</b><span>細部と送信量のバランス</span></div>
+  <div><code>AverageBitRate</code><b>0.9–2.5 Mbps</b><span>開始前に上り帯域で選ぶ</span></div>
+  <div><code>ProfileLevel</code><b>High Auto</b><span>圧縮profile・level</span></div>
+  <div><code>FrameReordering</code><b>false</b><span>表示順とdecode順を揃える</span></div>
 </div>
 
 <div class="source">LiveSegmentRecorder.makeHLSVideoSettings()</div>
@@ -1013,6 +1087,37 @@ HighはApple SDKで指定できるH.264 profileの名前です。
 
 個人アプリはH.264 portraitで、品質に応じて480pまたは720p、0.9から2.5Mbpsを選びます。
 端末保存品質ではなく、ネットワークへ継続的に送れる配信品質として設定します。
+解像度を下げると表現できる細部は減りますが、低いbitrateで画質を保ちやすくなります。同じ720pでも動きや細部によって必要なbitrateは変わるため、解像度だけで値を決めません。
+High Autoとframe reorderingは次のページで意味を分けます。
+-->
+
+---
+
+<div class="kicker">WHY · PROFILE AND FRAME ORDER</div>
+
+# 圧縮profileと、frame順序を選ぶ理由
+
+<div class="d d-pair">
+ <div class="d-node blue"><span>H.264 High Auto</span><b>圧縮方式と対応範囲を設定</b><small>High：Appleが推奨するprofile<br>Auto：Levelの選択をencoderへ</small></div>
+ <div class="d-node blue"><span>FrameReordering = false</span><b>表示順とdecode順を揃える</b><small>frameの並べ替えを禁止<br>B-frameの圧縮効率と引き換え</small></div>
+</div>
+<p class="d-note">falseにすると、撮影中のframeを表示順のまま扱える</p>
+<div class="bottom-claim">AutoはLevelの選択。ビットレートの自動切替（ABR）ではない</div>
+
+<!--
+H.264 Highは符号化に使える機能のprofile名です。アプリのHigh / Medium / Lowという画質段階とは別の分類です。
+AppleのHLS Authoring SpecificationはMainやBaselineよりHigh profileを推奨しています。ただし、再生互換性はprofileだけでなくlevelや再生機器にも依存します。
+Levelは解像度や処理量などの対応範囲を示します。HighAutoLevelでは特定のlevel番号を固定せず、encoderに選択を委ねます。出力がどの機器でも再生できる保証ではありません。
+frame reorderingは、表示順とdecode順を変える処理です。B-frameをencodeする際には並べ替えが必要になるため、falseはその並べ替えを禁止します。
+一般的なトレードオフは、B-frameで得られる圧縮効率を使わず、時刻やframe順の扱いを簡単にすることです。falseがHLSの必須条件だったり、配信遅延全体をなくしたりするわけではありません。
+SampleとMomentNowは配信用・保存用の両方でfalseを指定しています。保存用HEVC Main Autoも、8-bit入力に対応したprofileとlevel自動選択という構成です。
+
+[Sources]
+- https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices （1.4）
+- https://developer.apple.com/documentation/avfoundation/avvideoprofilelevelh264highautolevel
+- https://developer.apple.com/documentation/videotoolbox/kvtcompressionpropertykey_allowframereordering
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
 -->
 
 ---
@@ -1041,7 +1146,39 @@ HighはApple SDKで指定できるH.264 profileの名前です。
 [Optional detail: 時間が厳しい場合は省略]
 
 音声はAAC、mono、44.1kHzで、low 48、medium 64、high 96kbpsです。
-家族向けの短い映像という用途に合わせ、stereoより送信量を優先しています。
+monoと各bitrateは現行実装の設定です。利用者の音質評価を比較して、この組み合わせが適切だと確認したわけではありません。
+-->
+
+---
+
+<div class="kicker">WHY · AUDIO SETTINGS</div>
+
+# 音声設定の意味と、選択によるトレードオフ
+
+<div class="rationale-rows audio-rationale">
+ <div><b>AAC</b><strong>音声の圧縮方式</strong><span>HLSで扱える一般的な方式</span></div>
+ <div><b>mono：1 ch</b><strong>音声を1系統に</strong><span>左右の空間表現を省く</span></div>
+ <div><b>44.1 kHz</b><strong>44,100 sample / 秒</strong><span>一般的な選択。48 kHzも使える</span></div>
+ <div><b>48 / 64 / 96 kbps</b><strong>音声のデータ量</strong><span>映像品質に合わせて段階を用意</span></div>
+</div>
+<div class="bottom-claim">monoは今回の選択。Appleの配信仕様はstereoを要求する点に注意</div>
+
+<!--
+AACはHLSで利用できる音声codecです。記事の出力例ではAAC-LCが確認できています。
+monoは左右の空間表現を持たない1ch音声です。少ないbitrateで音声を扱う構成ですが、monoにしただけで指定済みbitrateの送信量が自動的に半分になるわけではありません。
+Appleの現行HLS Authoring Specification 2.3はstereo音声の提供を要求しています。今回のmonoをApple推奨設定や配信仕様への全面準拠として紹介しません。一般向けに仕様準拠を目指す場合はstereoの提供を検討します。
+44.1 kHzと48 kHzはAACで一般的なsample rateです。44.1 kHzはHLS固有の必須値ではなく、現行実装の設定です。音声入力と異なるrateなら変換が必要になり得るため、実入力も確認します。
+低いbitrateは送信量を抑える一方、音質には不利になり得ます。48 / 64 / 96 kbpsの各値は規格上の正解ではありません。
+MomentNowはLow 48、Medium 64、High 96 kbps。SampleのHLSは64 kbps固定、保存用MP4は96 kbpsです。
+音声の細部をどの程度残したいかで値を検証するもので、会話・音楽・騒音下など全条件で同じ品質になるとは説明しません。
+これらは設定の一般的な性質です。MomentNowでは実ユーザーの声に基づく設定の見直しが十分できておらず、44.1 kHzやbitrateの数値を比較検証の結論としては示しません。
+
+[Sources]
+- https://developer.apple.com/documentation/http-live-streaming/preparing-audio-for-http-live-streaming
+- https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices （2.3）
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
 -->
 
 ---
@@ -1061,23 +1198,28 @@ writer.initialSegmentStartTime = startTimeOffset
 writer.delegate = self
 ```
 
-<div class="bottom-claim">ファイル保存用のoutputURLは指定しない</div>
+<div class="bottom-claim">600は時刻の分母。2秒 ＝ 1200 / 600秒。fpsの指定ではない</div>
 
 <!--
 このサンプルのWriterコードはiOS 26以上が対象です。
 通常の録画では出力先URLを指定しますが、segment delegateを使う構成ではcontentTypeだけでWriterを作ります。
 Apple HLS profile、希望segment間隔、initial start time、delegateを設定します。
+mpeg4AppleHLSは、HLS向けのfMP4としてsegment Dataを受け取るための出力profileです。codecのH.264 High profileとは別の設定です。
+CMTimeはvalue / timescale秒という有理数です。600は24・25・30の倍数で、それらのfpsのframe時刻を表しやすい値としてAppleの説明でも使われます。
+ただし、このコードで600を使う対象はsegment間隔の2秒です。2秒の表現に600が必須なわけではなく、1200 / 600も2 / 1も2秒です。
+撮影fpsや音声sample rateを600へ変更する設定ではなく、すべての入力timestampを600に丸める指定でもありません。29.97 fpsなどを常に正確に表すという説明もしません。
 
 contentTypeのmpeg4MovieはMP4というcontainerの種類、outputFileTypeProfileのmpeg4AppleHLSはHLS向けfragment出力の指定です。
 名前は似ていますが競合する設定ではありません。
 
 このdelegate methodを実装すると通常のファイル書き込みは抑止され、Writerがsegment Dataをcallbackします。
 各propertyの意味と2秒境界はChapter 03で詳しく見ます。
-preferredTimescaleに 600 を指定した場合、1秒は 600/600 となり、1/600秒単位の細かい時間を表現できるようになります。
 
 [Sources]
 - https://developer.apple.com/documentation/avfoundation/avassetwriter
 - https://developer.apple.com/documentation/avfoundation/avfiletypeprofile/mpeg4applehls
+- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
+- https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/AVFoundationPG/Articles/06_MediaRepresentations.html
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
@@ -1116,15 +1258,20 @@ let videoInput = AVAssetWriterInput(
     mediaType: .video,
     outputSettings: videoSettings()
 )
+videoInput.expectsMediaDataInRealTime = true
 self.videoReceiver = writer.inputReceiver(for: videoInput)
 ```
 <div class="d d-row"><div class="d-node"><span>setup内で作成</span><b>videoInput</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>以後のcallbackで使用</span><b>videoReceiver</b></div></div>
-<div class="bottom-claim">AudioもmediaTypeとoutputSettingsを替え、同じ手順で接続する</div>
+<div class="bottom-claim">撮影から逐次届く入力なので、real-time向けの処理を指定する</div>
 
 <!--
 inputReceiver(for:)がInputをWriterへ接続し、書き込むためのReceiverを返します。
 従来のwriter.add(input)とinput.append(sampleBuffer)に相当する接続と書き込みをReceiver経由で行う、iOS 26以降のAPIです。
+AudioもmediaTypeとoutputSettingsを替え、同じ手順で接続します。
+expectsMediaDataInRealTime = trueはCaptureのようなリアルタイム入力に合わせてWriter Inputの処理を調整する指定です。ファイルを高速変換する入力とは違うことを伝えます。
+書き込み開始前に設定します。入力を無制限に受け付けたり、常に一定の処理時間を保証したりする指定ではありません。
 [Sources]
+- https://developer.apple.com/documentation/avfoundation/avassetwriterinput/expectsmediadatainrealtime
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
@@ -1395,6 +1542,12 @@ Writerへ渡す時刻の扱いを確認したので、次は約2秒のfragment�
 <!--
 この4つが、ファイルURLを持たないHLS用Writerの核です。
 特にintervalは「必ず」ではなく「preferred」です。
+outputFileTypeProfileはHLS向けfMP4の出力を選ぶ設定で、playlistを作る指定ではありません。記事で選んだfMP4は、AVAssetWriterDelegateから直接受け取りSafari / iOSへ配信する今回の構成に合います。
+2秒のintervalは後の比較図、10秒のinitialSegmentStartTimeは本編の時刻図と補足で理由を説明します。
+
+[Sources]
+- https://zenn.dev/hs7/articles/080eac650f65ba
+- https://developer.apple.com/documentation/avfoundation/writing-fragmented-mpeg-4-files-for-http-live-streaming
 -->
 
 ---
@@ -1422,6 +1575,34 @@ IDRは前のframeを参照せず、そこから再生を開始できるkeyframe�
 - Apple HLS Authoring Specification for Apple Devices
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLS/HLSManifest.swift
+-->
+
+---
+
+<div class="kicker">WHY · SEGMENT DURATION</div>
+
+# segmentを短くすると、早く送れるがPUTが増える
+
+<div class="d d-pair">
+ <div class="d-node blue"><span>今回の希望間隔：2秒</span><b>短い断片で順次送信</b><small>1分あたり約30 segment<br>生成完了までの待ちを短くする</small></div>
+ <div class="d-node"><span>Appleの一般的な目安：6秒</span><b>1回にまとめる量を増やす</b><small>1分あたり約10 segment<br>segment取得・PUTの回数が少ない</small></div>
+</div>
+<p class="d-note">IDRの「約2秒ごと」の推奨と、segment長の目安は別の設定</p>
+<div class="bottom-claim">2秒は今回の選択。HLSの必須値でも、視聴遅延の保証でもない</div>
+
+<!--
+撮影中にできた分から送りたいので、短いsegmentには生成完了を早く迎えられる利点があります。一方、短くするとHTTP requestやplaylist更新が増えます。
+同じbitrateで理想的に2秒 / 6秒ずつ出力する概算なら、1分で30個 / 10個です。SampleはmediaごとにplaylistもPUTするため、2秒の例なら定常時に約60 PUT/分になります。initやretryは別です。
+この回数はnominalな概算で、実durationや回線の詰まりで実際の時刻は変わります。2秒にしただけでend-to-endの遅延が2秒になるわけではありません。
+Apple HLS Authoring Specificationはsegment / target durationの一般的な目安を6秒、IDRを約2秒ごととしています。2つの推奨を混同しません。
+今回の2秒segmentは早く小分けに送りたい構成での選択です。HLSの固定要件や、Low-Latency HLSの実装として説明しません。
+保存用MP4のkeyframe間隔2秒も、HLS segmentを生成する設定ではありません。停止まで1本のMP4へ書き込みます。
+
+[Sources]
+- https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices （1.13、7.5、7.6）
+- https://developer.apple.com/documentation/avfoundation/avassetwriter/preferredoutputsegmentinterval
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
 -->
 
 ---
@@ -1787,6 +1968,9 @@ PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで
 各PUTは初回を含め最大3回試します。ここではsegment本体のPUTを例にしています。
 成功すれば次のplaylist PUTへ進みます。3回とも失敗した場合はerrorを残し、後続の公開も進めません。
 playlist PUT自体にも同じretry方針を適用しています。
+3回という上限は、短い一時障害を再試行しつつ失敗を無期限に隠さないためのSampleの設定例です。HLSが要求する回数でも、どの回線でも最適な回数でもありません。
+250 ms / 500 msは再試行を直ちに連打しないための短い待ちです。実装は250 × attemptなので、一般的な指数backoffやjitterを実装済みとは説明しません。
+HTTP request自体の待ち時間もあるため、合計750 ms以内で必ず成功・失敗が確定するという意味ではありません。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
@@ -1859,11 +2043,16 @@ MomentNowはsegmentごとにTaskでuploadするため、await中に完了順が�
 playlistは同じURLの本文が変化します。
 SampleおよびMomentNowはplaylistにno-store、no-cache等を設定します。no-storeとno-cache自体は同義ではなく、前者は保存禁止、後者は再利用前の検証を求める指定です。
 CDNでも古いplaylistを固定的に配らない設定が必要です。
+記事でも、更新されるplaylistを古いcacheで固定しない方針を説明しています。
+max-age=0は直ちに古くなる扱いです。CloudFrontではMinimum TTLが正だとoriginのno-cache / no-storeよりTTLが優先されるため、playlist向けのcache policyも合わせて確認します。
 
 [Sources]
 - iosdc2026HLSSample/server/server.py
 - MomentNow-Lambda/src/create_stream.ts
 - MomentNow-Lambda/src/presign.ts
+- https://zenn.dev/hs7/articles/080eac650f65ba （CloudFrontキャッシュ設定）
+- https://www.rfc-editor.org/rfc/rfc9111.html
+- https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html
 -->
 
 ---
@@ -1873,7 +2062,7 @@ CDNでも古いplaylistを固定的に配らない設定が必要です。
 # initとsegmentは内容を変えず、<br>キャッシュを再利用する
 
 <div class="d">
- <div class="d-row"><div class="d-node blue"><span>保存済み</span><b>000001.m4s</b><small>同じURLでは<br>内容を変えない</small></div><i class="d-arrow">→</i><div class="d-node"><span>CDN / キャッシュ</span><b>完成Dataを保持</b><small>max-age=31536000</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>Viewer</span><b>同じDataを取得</b><small>再利用できる</small></div></div>
+ <div class="d-row"><div class="d-node blue"><span>保存済み</span><b>000001.m4s</b><small>同じURLでは<br>内容を変えない</small></div><i class="d-arrow">→</i><div class="d-node"><span>CDN / キャッシュ</span><b>完成Dataを長期再利用</b><small>max-age：365日</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>Viewer</span><b>同じDataを取得</b><small>再利用できる</small></div></div>
  <div class="d-row"><div class="d-node"><span>次のsegment</span><b>000002.m4sは別URL</b></div><div class="d-node"><span>部分取得への対応</span><b>Range request / 206</b></div></div>
 </div>
 <div class="bottom-claim">更新されるplaylistと、変わらないメディアで方針を分ける</div>
@@ -1882,10 +2071,15 @@ CDNでも古いplaylistを固定的に配らない設定が必要です。
 initとm4sは一度保存したら変更しないため長期cacheします。SampleのファイルサーバーとMomentNowのS3 objectでmax-age=31536000を設定しています。
 配信ごとに保存先が異なり、segmentは番号付きの別URLなので、新しいsegmentと古いcacheが衝突しません。
 Range / 206はキャッシュ方針とは別の部分取得機能です。取得済みだから全てのViewerが必ず通信ゼロになるという図にはしていません。
+31536000秒は365日です。内容が変わらないURLを長く再利用するための値で、HLSの必須TTLではありません。
+immutableは有効期間中に同じURLの内容が変わらないという宣言です。新しいsegmentには新しいURLを使う前提と組み合わせます。
+cacheの有効期間はS3の保存期限とは別です。365日の保存や、cacheに必ず365日間残ることを保証するものではありません。CDNのMaximum TTLなどにも影響されます。
 [Sources]
 - iosdc2026HLSSample/server/server.py
 - MomentNow-Lambda/src/presign.ts
 - MomentNow-Lambda/src/create_stream.ts
+- https://www.rfc-editor.org/rfc/rfc9111.html
+- https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html
 -->
 
 ---
@@ -1946,9 +2140,13 @@ continuation.yieldでHLSFragmentを渡したらすぐ戻り、PublisherのTask�
 <!--
 生成前のCMSampleBufferと、生成後のsegment Dataを区別します。
 appendImmediatelyがfalseの場合にdropするのは前者です。生成済みsegmentの待ち行列には作用しません。
+Capture側のalwaysDiscardsLateVideoFrames = trueも、古い映像frameを溜め続けないための別の設定です。video callbackへ渡す前の制御で、Receiverのfalseとは別です。
+画の欠落を避ける録画とはトレードオフがあります。Sampleでは同じDataOutputから保存用Writerにも渡すため、Capture側で落ちたframeは保存側にも届きません。
+この設定も生成済みsegmentのHTTP待ちを解消しません。
 生成に対して送信が遅い状態が続くと滞留が増えます。上限と超過時の停止判断は今後の改善として扱い、ライブ遅延全体を解消する実装済み対策とは説明しません。
 
 [Sources]
+- https://developer.apple.com/library/archive/technotes/tn2445/_index.html
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
@@ -2063,30 +2261,28 @@ iosdc2026HLSSampleはMacを小さなobject serverとして使います。
 
 ---
 
-<div class="kicker">FIT, NOT UNIVERSAL</div>
+<div class="kicker">MOMENTNOW · REFLECTION</div>
 
-# この構成が効くのは、用途を絞ったとき
+# 実ユーザーの声を、改善につなげきれていない
 
-<div class="fit-spectrum">
-  <div class="fit-side good">
-    <span>GOOD FIT</span>
-    <b>少人数・短時間・単一品質</b>
-    <small>新しいiPhone / 安定した上り回線</small>
-  </div>
-  <div class="fit-scale"><i></i></div>
-  <div class="fit-side bad">
-    <span>USE A MEDIA PLATFORM</span>
-    <b>大規模・長時間<br>複数画質の自動切替</b>
-    <small>厳しい可用性要件にも対応したい</small>
-  </div>
+<p class="d-note">MomentNowは、想定ほど利用が広がらなかった</p>
+<div class="d">
+ <div class="d-node warn"><b>利用者の声を十分に集められていない</b><small>画質・待ち時間への評価を、設定の見直しへつなげきれていない<br>一度決めた値のまま、継続している設定が多い</small></div>
 </div>
-
-<div class="bottom-claim">「端末でできる」と「端末でやるべき」は別の判断</div>
+<div class="d d-pair">
+ <div class="d-node green"><span>想定している用途</span><b>少人数・短時間・単一品質</b><small>端末や上り回線の条件にも依存</small></div>
+ <div class="d-node blue"><span>別の構成を検討する条件</span><b>大規模・長時間・複数画質</b><small>専用media platformなどを検討</small></div>
+</div>
+<div class="bottom-claim">設定の妥当性を、利用実績とユーザーの声で検証することが課題</div>
 
 <!--
-この構成は万能ではありません。
-少人数・短時間・単一品質には合います。
-大規模、長時間、複数画質を回線に合わせて自動切替するABR、厳しい可用性要件があるなら専用のmedia platformを選びます。
+最後に、正直な反省点です。MomentNowは想定ほど利用が広がりませんでした。
+本番でのリアルなユーザーの声を十分に集められず、画質や待ち時間の評価を設定の見直しへ反映しきれていません。設定値にも、一度決めた値のまま使い続けているものが多いです。
+紹介した設定の一般的な性質は説明できますが、それによって、この数値が利用者にとって適切だと検証できたことにはなりません。
+今回共有できるのは、端末内でHLSを生成して配信する実装と、その過程で分かったことです。実装時の動作確認と、実ユーザーの評価に基づく最適化は分けて考えています。
+少人数・短時間・単一品質は想定した用途です。その適合性を本番の利用実績で十分に裏付けた、とは説明しません。新しいiPhoneや安定した上り回線といった条件にも依存します。
+大規模、長時間、複数画質のABR、厳しい可用性要件があるなら、専用media platformを含めて別の構成を検討します。「端末でできる」と「端末でやるべき」は別の判断です。
+今後は画質や待ち時間について利用者の声を集め、実際の配信状況と合わせて設定を見直すことが課題です。実施済みの改善や計測結果としては扱いません。
 -->
 
 ---
@@ -2131,13 +2327,17 @@ class: closing thanks-slide
 <div class="closing-footer">
   <div>
     <b>ありがとうございました</b>
-    サンプルアプリのコード<br>https://github.com/HikaruSato/iosdc2026HLSSample
+    サンプルアプリのコード<br>
+    <a href="https://github.com/HikaruSato/iosdc2026HLSSample">https://github.com/HikaruSato/iosdc2026HLSSample</a><br><br>
+    MomentNowの開発記事<br>
+    <a href="https://zenn.dev/hs7/articles/080eac650f65ba">https://zenn.dev/hs7/articles/080eac650f65ba</a>
   </div>
 </div>
 
 <!--
 ありがとうございました。
 サンプルアプリは、このURLで公開しています。
+MomentNowの開発経緯はZennの記事にもまとめています。
 -->
 
 ---
@@ -2219,6 +2419,7 @@ Apple HLS profileはedit listを使わず、音声のbaseMediaDecodeTimeをprimi
 この値は符号なし整数なので、負にできません。そのためAppleは両方のmedia timeを同じ量だけ後ろへ移すことを勧めています。
 initialSegmentStartTimeも同じ開始位置に合わせます。
 10秒はHLS仕様の固定値ではありません。Appleのmediafilesegmenterと同じ値を選べる、という説明に合わせています。
+必要なのは音声の補償で負の時刻にならない余白です。10秒を唯一の正解や、動画の先頭に無音を10秒挿入する処理として説明しません。
 HLSの再生は最初の映像の提示時刻から始まるため、この設定による10秒の待ち時間は発生しません。
 マイクのcallbackが映像より先に届くこととは区別して説明します。
 

@@ -92,3 +92,11 @@
 .slidev-layout.closing .d-node > span { color: var(--on-dark-accent); }
 .slidev-layout.closing .d-arrow { color: var(--on-dark-accent); }
 .slidev-layout.closing .bottom-claim { color: var(--white); border-color: var(--on-dark-line); }
+
+/* Reasons for configuration values, using the existing large type scale. */
+.rationale-rows { margin-top: 30px; border-top: 3px solid var(--accent-primary); }
+.rationale-rows > div { display: grid; grid-template-columns: 300px 310px minmax(0, 1fr); gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.rationale-rows :is(b, strong, span) { font-size: 26px; line-height: 1.4; }
+.rationale-rows b { color: var(--accent-primary); }
+.rationale-rows strong { font-weight: 700; }
+.rationale-rows.audio-rationale > div { grid-template-columns: 290px 310px minmax(0, 1fr); padding: 16px 0; }
