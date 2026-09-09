@@ -376,16 +376,15 @@ class: statement
 # 撮影・保存・接続に必要な権限
 
 <table class="permissions-table">
-  <thead><tr><th>権限</th><th>このサンプルでの用途</th><th>許可するタイミング</th></tr></thead>
+  <thead><tr><th>権限</th><th>用途</th><th>許可するタイミング</th></tr></thead>
   <tbody>
-    <tr><th>カメラ</th><td>配信映像の撮影</td><td>プレビュー開始時</td></tr>
-    <tr><th>マイク</th><td>配信音声の録音</td><td>プレビュー開始時</td></tr>
+    <tr><th>カメラ</th><td>配信映像の撮影</td><td>撮影開始時</td></tr>
+    <tr><th>マイク</th><td>配信音声の録音</td><td>撮影開始時</td></tr>
     <tr><th>写真へ追加</th><td>完成したMP4の保存</td><td>配信開始前</td></tr>
-    <tr><th>ローカル<br>ネットワーク</th><td>同じLANのMacへ接続</td><td>最初のLAN接続時</td></tr>
   </tbody>
 </table>
 
-<div class="bottom-claim">Info.plistに用途を記載。写真は「追加のみ」を要求する</div>
+<div class="bottom-claim">Info.plistに用途を記載。写真は撮影終了後の「追加のみ」を要求する</div>
 
 <!--
 [本編必須: デモ前の権限確認]
@@ -908,7 +907,7 @@ Video用delegate queueにはserial queueが必要です。SampleはAudioも同�
 
 <div class="kicker">ORIENTATION</div>
 
-# 縦向きは、video connectionへ90度を指定
+# video connectionへ90度を指定
 
 <div class="orientation-visual">
   <div class="landscape-frame">1920 × 1080</div>
@@ -917,6 +916,7 @@ Video用delegate queueにはserial queueが必要です。SampleはAudioも同�
 </div>
 
 ```swift
+// 端末側の撮影を縦固定にしているため 90°回転する
 if let connection = videoOutput.connection(with: .video),
    connection.isVideoRotationAngleSupported(90) {
     connection.videoRotationAngle = 90
