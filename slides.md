@@ -232,7 +232,7 @@ Playerはplaylistを取得し、そこに書かれた順でinitとsegmentを取�
 <div class="bottom-claim">init.mp4（再生準備）+ m4s（約2秒）+ playlist（順番）= 最初の再生</div>
 
 <!--
-目次、初期化セグメント、メディアセグメントの3種類です。
+playlist、初期化セグメント、メディアセグメントの3種類です。
 initだけにも、m4sだけにも、完全な再生体験はありません。playlistが関係を定義します。
 
 [Sources]
