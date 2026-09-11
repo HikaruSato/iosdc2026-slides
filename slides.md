@@ -417,7 +417,7 @@ NSAllowsLocalNetworkingというATS設定と、ユーザーが許可するロー
 
 <div class="kicker">LIVE DEMO · PUBLIC SAMPLE</div>
 
-# 公開サンプルを動かす：生成・保存・再生
+# [公開サンプル](https://github.com/HikaruSato/iosdc2026HLSSample)を動かす：生成・保存・再生
 
 <SampleDataFlow />
 
