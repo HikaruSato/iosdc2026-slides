@@ -1020,7 +1020,7 @@ videoOutput.videoSettings = [
 ]
 ```
 
-<div class="bottom-claim compact">サンプルは1.5 Mbps · 個人アプリは上り回線に合わせて0.9-2.5 Mbps</div>
+<div class="bottom-claim compact">このコードはCaptureの入力形式。圧縮設定は次のページで指定する</div>
 
 <div class="source">HLSSegmentRecorder.setupCaptureSessionLocked()</div>
 
@@ -1028,31 +1028,13 @@ videoOutput.videoSettings = [
 [Optional detail: 時間が厳しい場合は省略]
 
 DataOutputからは未圧縮映像のpixel bufferを受け取ります。
-H.264への圧縮はAVAssetWriterInputのoutputSettingsが担当します。
+このコードはCaptureから受け取る映像の形式を指定します。H.264への圧縮はWriter側で行い、その設定をAVAssetWriterInputのoutputSettingsへ渡します。次のページで圧縮設定を確認します。
 HighはApple SDKで指定できるH.264 profileの名前です。
 公開サンプルは1.5 Mbps固定です。個人アプリは上り回線に応じて、品質設定ごとに0.9、1.5、2.5 Mbpsから選びます。段階ごとの数値を、実ユーザーの評価に基づく最適値としては示しません。
 
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
-- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
--->
+入力形式の詳細は質問・実装時の参照用としてノートに残します。
 
----
-
-<div class="kicker">WHY · PIXEL FORMAT</div>
-
-# 入力形式は、色変換とメモリー転送量に効く
-
-<div class="rationale-rows">
- <div><b>Y′CbCr 4:2:0</b><strong>輝度と色差</strong><span>BGRAより小さい画素表現</span></div>
- <div><b>8-bit・BiPlanar</b><strong>8 bit・2つの面</strong><span>輝度と色差を分けて格納</span></div>
- <div><b>FullRange</b><strong>輝度：0〜255</strong><span>画素値の範囲を指定</span></div>
-</div>
-<p class="d-note">Captureの対応形式を使い、BGRAへの不要な変換を避けるのが基本</p>
-<div class="bottom-claim">FullRangeは今回の選択。HLSが要求する入力形式ではない</div>
-
-<!--
-長い定数名を分けて読むページです。4:2:0は輝度より色差のサンプル数を少なくする表現、8は各成分8 bit、BiPlanarは輝度面と色差面の2-planeを表します。
+4:2:0は輝度より色差のサンプル数を少なくする表現、8は各成分8 bit、BiPlanarは輝度面と色差面の2-planeを表します。
 Apple TN3121は、BGRAを無条件に選ぶとネイティブ形式からの変換とメモリー帯域の負担が生じると説明しています。8-bit 4:2:0は概ね1.5 byte/pixel、BGRAは4 byte/pixelです。
 どの形式がネイティブかは端末のactiveFormatに依存します。一般にはavailableVideoPixelFormatTypesを確認して、後段の処理が扱える形式を選びます。Sampleの現行コードはFullRangeを固定指定しており、形式を動的に選び直す実装ではありません。
 FullRangeは8-bit輝度に0〜255の範囲を使う指定です。解像度、HDR、H.264 High profile、色域が広いという意味ではありません。
@@ -1062,6 +1044,7 @@ FullRangeをVideoRangeより常に高画質・高速と説明したり、すべ�
 [Sources]
 - https://developer.apple.com/documentation/technotes/tn3121-selecting-a-pixel-format-for-an-avcapturevideodataoutput
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
 -->
 
 ---
@@ -1087,26 +1070,12 @@ FullRangeをVideoRangeより常に高画質・高速と説明したり、すべ�
 個人アプリはH.264 portraitで、品質に応じて480pまたは720p、0.9から2.5Mbpsを選びます。
 端末保存品質ではなく、ネットワークへ継続的に送れる配信品質として設定します。
 解像度を下げると表現できる細部は減りますが、低いbitrateで画質を保ちやすくなります。同じ720pでも動きや細部によって必要なbitrateは変わるため、解像度だけで値を決めません。
-High Autoとframe reorderingは次のページで意味を分けます。
--->
+本編ではH.264・解像度・bitrateを中心に説明します。これらの圧縮設定をInputへ渡し、Writerに接続します。
+以下は質問・実装時の参照用です。
 
----
-
-<div class="kicker">WHY · PROFILE AND FRAME ORDER</div>
-
-# 圧縮profileと、frame順序を選ぶ理由
-
-<div class="d d-pair">
- <div class="d-node blue"><span>H.264 High Auto</span><b>圧縮方式と対応範囲を設定</b><small>High：Appleが推奨するprofile<br>Auto：Levelの選択をencoderへ</small></div>
- <div class="d-node blue"><span>FrameReordering = false</span><b>表示順とdecode順を揃える</b><small>frameの並べ替えを禁止<br>B-frameの圧縮効率と引き換え</small></div>
-</div>
-<p class="d-note">falseにすると、撮影中のframeを表示順のまま扱える</p>
-<div class="bottom-claim">AutoはLevelの選択。ビットレートの自動切替（ABR）ではない</div>
-
-<!--
 H.264 Highは符号化に使える機能のprofile名です。アプリのHigh / Medium / Lowという画質段階とは別の分類です。
 AppleのHLS Authoring SpecificationはMainやBaselineよりHigh profileを推奨しています。ただし、再生互換性はprofileだけでなくlevelや再生機器にも依存します。
-Levelは解像度や処理量などの対応範囲を示します。HighAutoLevelでは特定のlevel番号を固定せず、encoderに選択を委ねます。出力がどの機器でも再生できる保証ではありません。
+Levelは解像度や処理量などの対応範囲を示します。HighAutoLevelでは特定のlevel番号を固定せず、encoderに選択を委ねます。出力がどの機器でも再生できる保証ではありません。Autoはlevelの自動選択であり、配信途中の自動画質切替（ABR）ではありません。
 frame reorderingは、表示順とdecode順を変える処理です。B-frameをencodeする際には並べ替えが必要になるため、falseはその並べ替えを禁止します。
 一般的なトレードオフは、B-frameで得られる圧縮効率を使わず、時刻やframe順の扱いを簡単にすることです。falseがHLSの必須条件だったり、配信遅延全体をなくしたりするわけではありません。
 SampleとMomentNowは配信用・保存用の両方でfalseを指定しています。保存用HEVC Main Autoも、8-bit入力に対応したprofileとlevel自動選択という構成です。
@@ -1117,67 +1086,6 @@ SampleとMomentNowは配信用・保存用の両方でfalseを指定していま
 - https://developer.apple.com/documentation/videotoolbox/kvtcompressionpropertykey_allowframereordering
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
--->
-
----
-
-<div class="kicker">AUDIO SETTINGS</div>
-
-# AudioはAAC mono、品質別に48–96kbps
-
-<div class="audio-spec">
-  <div><span>FORMAT</span><b>AAC</b></div>
-  <div><span>CHANNEL</span><b>mono</b></div>
-  <div><span>SAMPLE RATE</span><b>44.1 kHz</b></div>
-  <div><span>BITRATE</span><b>48–96 kbps</b></div>
-</div>
-
-```swift
-[
-    AVFormatIDKey: kAudioFormatMPEG4AAC,
-    AVNumberOfChannelsKey: 1,
-    AVSampleRateKey: 44_100,
-    AVEncoderBitRateKey: config.audioBitrate
-]
-```
-
-<!--
-[Optional detail: 時間が厳しい場合は省略]
-
-音声はAAC、mono、44.1kHzで、low 48、medium 64、high 96kbpsです。
-monoと各bitrateは現行実装の設定です。利用者の音質評価を比較して、この組み合わせが適切だと確認したわけではありません。
--->
-
----
-
-<div class="kicker">WHY · AUDIO SETTINGS</div>
-
-# 音声設定の意味と、選択によるトレードオフ
-
-<div class="rationale-rows audio-rationale">
- <div><b>AAC</b><strong>音声の圧縮方式</strong><span>HLSで扱える一般的な方式</span></div>
- <div><b>mono：1 ch</b><strong>音声を1系統に</strong><span>左右の空間表現を省く</span></div>
- <div><b>44.1 kHz</b><strong>44,100 sample / 秒</strong><span>一般的な選択。48 kHzも使える</span></div>
- <div><b>48 / 64 / 96 kbps</b><strong>音声のデータ量</strong><span>映像品質に合わせて段階を用意</span></div>
-</div>
-<div class="bottom-claim">monoは今回の選択。Appleの配信仕様はstereoを要求する点に注意</div>
-
-<!--
-AACはHLSで利用できる音声codecです。記事の出力例ではAAC-LCが確認できています。
-monoは左右の空間表現を持たない1ch音声です。少ないbitrateで音声を扱う構成ですが、monoにしただけで指定済みbitrateの送信量が自動的に半分になるわけではありません。
-Appleの現行HLS Authoring Specification 2.3はstereo音声の提供を要求しています。今回のmonoをApple推奨設定や配信仕様への全面準拠として紹介しません。一般向けに仕様準拠を目指す場合はstereoの提供を検討します。
-44.1 kHzと48 kHzはAACで一般的なsample rateです。44.1 kHzはHLS固有の必須値ではなく、現行実装の設定です。音声入力と異なるrateなら変換が必要になり得るため、実入力も確認します。
-低いbitrateは送信量を抑える一方、音質には不利になり得ます。48 / 64 / 96 kbpsの各値は規格上の正解ではありません。
-MomentNowはLow 48、Medium 64、High 96 kbps。SampleのHLSは64 kbps固定、保存用MP4は96 kbpsです。
-音声の細部をどの程度残したいかで値を検証するもので、会話・音楽・騒音下など全条件で同じ品質になるとは説明しません。
-これらは設定の一般的な性質です。MomentNowでは実ユーザーの声に基づく設定の見直しが十分できておらず、44.1 kHzやbitrateの数値を比較検証の結論としては示しません。
-
-[Sources]
-- https://developer.apple.com/documentation/http-live-streaming/preparing-audio-for-http-live-streaming
-- https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices （2.3）
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
-- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
 -->
 
 ---
@@ -1251,7 +1159,6 @@ Inputをデータが順番に通過する処理ステップとしてではなく
 
 # InputをWriterへ接続し、Receiverを保持する
 
-
 ```swift
 let videoInput = AVAssetWriterInput(
     mediaType: .video,
@@ -1261,18 +1168,36 @@ videoInput.expectsMediaDataInRealTime = true
 self.videoReceiver = writer.inputReceiver(for: videoInput)
 ```
 <div class="d d-row"><div class="d-node"><span>setup内で作成</span><b>videoInput</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>以後のcallbackで使用</span><b>videoReceiver</b></div></div>
-<div class="bottom-claim">撮影から逐次届く入力なので、real-time向けの処理を指定する</div>
+<div class="bottom-claim">音声もAACの設定を持つInputと、audioReceiverを用意する</div>
 
 <!--
 inputReceiver(for:)がInputをWriterへ接続し、書き込むためのReceiverを返します。
 従来のwriter.add(input)とinput.append(sampleBuffer)に相当する接続と書き込みをReceiver経由で行う、iOS 26以降のAPIです。
-AudioもmediaTypeとoutputSettingsを替え、同じ手順で接続します。
+音声も同じ手順です。mediaTypeを.audioとし、AACの圧縮設定をoutputSettingsへ渡してaudioReceiverを保持します。映像用と音声用にそれぞれInputとReceiverを用意します。
 expectsMediaDataInRealTime = trueはCaptureのようなリアルタイム入力に合わせてWriter Inputの処理を調整する指定です。ファイルを高速変換する入力とは違うことを伝えます。
 書き込み開始前に設定します。入力を無制限に受け付けたり、常に一定の処理時間を保証したりする指定ではありません。
+音声の詳細は質問・実装時の参照用としてノートに残します。
+
+音声はAAC、mono、44.1kHzで、low 48、medium 64、high 96kbpsです。
+monoと各bitrateは現行実装の設定です。利用者の音質評価を比較して、この組み合わせが適切だと確認したわけではありません。
+
+AACはHLSで利用できる音声codecです。記事の出力例ではAAC-LCが確認できています。
+monoは左右の空間表現を持たない1ch音声です。少ないbitrateで音声を扱う構成ですが、monoにしただけで指定済みbitrateの送信量が自動的に半分になるわけではありません。
+Appleの現行HLS Authoring Specification 2.3はstereo音声の提供を要求しています。今回のmonoをApple推奨設定や配信仕様への全面準拠として紹介しません。一般向けに仕様準拠を目指す場合はstereoの提供を検討します。
+44.1 kHzと48 kHzはAACで一般的なsample rateです。44.1 kHzはHLS固有の必須値ではなく、現行実装の設定です。音声入力と異なるrateなら変換が必要になり得るため、実入力も確認します。
+低いbitrateは送信量を抑える一方、音質には不利になり得ます。48 / 64 / 96 kbpsの各値は規格上の正解ではありません。
+MomentNowはLow 48、Medium 64、High 96 kbps。SampleのHLSは64 kbps固定、保存用MP4は96 kbpsです。
+音声の細部をどの程度残したいかで値を検証するもので、会話・音楽・騒音下など全条件で同じ品質になるとは説明しません。
+これらは設定の一般的な性質です。MomentNowでは実ユーザーの声に基づく設定の見直しが十分できておらず、44.1 kHzやbitrateの数値を比較検証の結論としては示しません。
+
 [Sources]
+- https://developer.apple.com/documentation/http-live-streaming/preparing-audio-for-http-live-streaming
+- https://developer.apple.com/documentation/http-live-streaming/hls-authoring-specification-for-apple-devices （2.3）
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
+- MomentNow-iOS/MomentNow-iOS/LiveStreamView/LiveSegmentRecorder.swift
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/expectsmediadatainrealtime
 - https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
 -->
 
 ---
