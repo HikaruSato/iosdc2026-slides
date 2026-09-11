@@ -419,22 +419,17 @@ NSAllowsLocalNetworkingというATS設定と、ユーザーが許可するロー
 
 # 公開サンプルを動かす：生成・保存・再生
 
-<div class="d">
- <div class="d-row">
-  <div class="d-node blue"><span>iPhone</span><b>Camera ＋ Mic</b><small>2つのWriterで生成</small></div>
-  <i class="d-arrow">→</i>
-  <div class="d-node blue"><span>Mac HTTP Server</span><b>HLS一式を保存</b><small>HTTP PUTで受信<br>映像変換なし</small></div>
-  <i class="d-arrow">→</i>
-  <div class="d-node blue"><span>Viewer</span><b>追従再生</b><small>同じplaylistをGET</small></div>
- </div>
- <div class="d-row"><div class="d-node green fill"><span>iPhone内の別経路 · 停止後</span><b>完成MP4を写真へ保存して再生</b><small>フルHD・HEVC。MP4はMacへ送信しない</small></div></div>
-</div>
-<div class="bottom-claim">Safariでデモ。同じplaylist URLをAVPlayerへ渡した再生確認にも触れる</div>
+<SampleDataFlow />
+
+<div class="bottom-claim">撮影は1系統。配信用HLSと保存用MP4を同時に生成する</div>
 
 <!--
 [Timing checkpoint: 05:00]
 
 ここまで確認したHLSの仕組みを、公開サンプルで実際に動かします。
+図は上から読みます。CameraとMicのデータをCaptureSessionからCMSampleBufferとして受け取り、同じ撮影データを2つのWriterへ渡します。
+青は配信経路です。Writerがinit.mp4とm4sを生成し、HLSStreamPublisherがinitを先に、以後はsegmentとplaylistの順にPUTします。Macはファイルを保存して配信するだけで、映像変換はしません。
+緑は端末保存の経路です。別のWriterでMP4を並行生成し、停止してファイルが完成したら写真ライブラリへ保存します。MP4はMacへ送信しません。
 iPhoneはHLSを生成してMacへHTTP PUTし、MacのViewer（Playerを使う再生画面）は同じファイルをHTTP GETして追従再生します。
 
 Safariでplaylistが更新される間の追従再生を見せ、同じplaylist URLをiOSのAVPlayerへ渡した再生確認にも触れます。
@@ -447,6 +442,10 @@ Macにinit.mp4、m4s、playlistが残ることと、停止後も同じURLで再�
 
 [Sources]
 - iosdc2026HLSSample/README.md
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/LocalVideoWriter.swift
+- iosdc2026HLSSample/ios/iosdc2026HLSSample/PhotoVideoSaver.swift
 -->
 
 ---

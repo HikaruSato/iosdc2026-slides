@@ -67,6 +67,7 @@ HLSを知らないiOSエンジニア向けに、図で役割・処理順・並�
 - 現状・改善案、Sample・MomentNowは画面上に明記します。
 
 図はHTML/CSSで編集できます。共通の図用スタイルは `styles/diagrams.css` にあります。
+デモ直前の15ページには、撮影データがHLS配信と写真保存へ分かれる全体図を掲載しています。この図は `components/SampleDataFlow.vue` のSVGで編集できます。
 
 ## 通し練習
 
