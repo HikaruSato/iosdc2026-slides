@@ -147,7 +147,7 @@ Writerへ渡す時刻の扱いは、生成処理の中で短く触れます。
 
 <!--
 HLSを端末内で生成できれば、映像変換サーバーのコストを最小限にできると考え、実装を試行錯誤していました。
-2025年3月ごろ、最初はAIへ実装させてみましたが、再生できるHLSとして実用まで到達できませんでした。
+2026年3月ごろ、最初はAIへ実装させてみましたが、再生できるHLSとして実用まで到達できませんでした。
 
 突破口になったのがApple公式のfmp4Writerです。
 公式プロジェクトはmacOS 11以降向けのCommand Line Toolで、movie fileをAVAssetReaderで読み込みます。
@@ -276,7 +276,6 @@ init.mp4にはftypとmoov、各m4sにはmoofとmdatが入ります。
  <div class="d-arrow down">↓</div>
  <div class="d-row"><div class="d-node"><span>① 再生設定を取得</span><b>GET init.mp4</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>② 映像・音声を取得</span><b>GET 000001.m4s</b></div></div>
 </div>
-<div class="bottom-claim">再生可能なファイルが揃う。再生開始のタイミングはPlayerにも依存する</div>
 
 <!--
 Playerの視点で最初の取得を追います。
@@ -1092,7 +1091,7 @@ SampleとMomentNowは配信用・保存用の両方でfalseを指定していま
 
 <div class="kicker">HLS WRITER · iOS 26+</div>
 
-# URLを持たないWriterから、Dataを受け取る
+# WriterからDataを受け取る設定
 
 <div class="d d-row d-compact"><div class="d-node blue"><span>HLS向け設定</span><b>AVAssetWriter</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>delegate</span><b>init / media Data</b></div></div>
 
@@ -1104,8 +1103,6 @@ writer.preferredOutputSegmentInterval = .init(
 writer.initialSegmentStartTime = startTimeOffset
 writer.delegate = self
 ```
-
-<div class="bottom-claim">600は時刻の分母。2秒 ＝ 1200 / 600秒。fpsの指定ではない</div>
 
 <!--
 このサンプルのWriterコードはiOS 26以上が対象です。
@@ -1329,7 +1326,7 @@ case .separable:
 }
 ```
 
-<div class="bottom-claim">Recorderの出力はData。HTTPHLSClientが保存先のpathを組み立てる</div>
+<div class="bottom-claim">Recorderの出力はData</div>
 
 <!--
 Writer delegateには、segmentDataとsegmentTypeが届きます。
@@ -1511,7 +1508,6 @@ IDRは前のframeを参照せず、そこから再生を開始できるkeyframe�
  <div class="d-node blue"><span>今回の希望間隔：2秒</span><b>短い断片で順次送信</b><small>1分あたり約30 segment<br>生成完了までの待ちを短くする</small></div>
  <div class="d-node"><span>Appleのサンプル：6秒</span><b>1回にまとめる量を増やす</b><small>1分あたり約10 segment<br>segment取得・PUTの回数が少ない</small></div>
 </div>
-<p class="d-note">IDRの「約2秒ごと」の推奨と、segment長の目安は別の設定</p>
 <div class="bottom-claim">2秒は今回の選択。HLSの必須値でも、視聴遅延の保証でもない</div>
 
 <!--
@@ -1533,18 +1529,12 @@ Apple HLS Authoring Specificationはsegment / target durationの一般的な目�
 
 <div class="kicker">PUBLIC SAMPLE · SEGMENT DURATION</div>
 
-# 実durationの反映：サンプルで実装済み
+# 実データ(m4s)からdurationを取得
 
 <div class="duration-compare">
   <div class="duration-side sample">
-    <span>公開サンプル · 実装済み</span>
     <b>実durationをEXTINFへ</b>
-    <small>reportが無効・未取得の場合だけ2秒</small>
-  </div>
-  <div class="duration-side production">
-    <span>MomentNow · 現状</span>
-    <b>2秒固定で送信</b>
-    <small>改善案：同じ実durationの取り込みを適用</small>
+    <small>reportが無効・未取得の場合は2秒</small>
   </div>
 </div>
 
@@ -1606,7 +1596,6 @@ Apple HLS Authoring Specificationは約2秒ごとのIDRを推奨します。こ�
   <div class="lane"><b>Capture</b><span class="continuous">frame · frame · frame · frame</span></div>
   <div class="lane"><b>Writer</b><span></span><span class="fragment">seg 1</span><span class="fragment">seg 2</span><span class="fragment">seg 3</span></div>
   <div class="lane"><b>Delegate</b><span class="init-mark">init</span><span class="callback-mark">Data 1</span><span class="callback-mark">Data 2</span><span class="callback-mark">Data 3</span></div>
-  <div class="lane"><b>保存先</b><span class="init-mark">PUT init</span><span class="callback-mark">PUT 1</span><span class="callback-mark">PUT 2</span><span class="callback-mark">PUT 3</span></div>
 </div>
 
 <div class="bottom-claim">Writerのfinishを待たず、生成と保存を並行できる</div>
