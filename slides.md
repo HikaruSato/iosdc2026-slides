@@ -1471,7 +1471,7 @@ callbackが来ても、配信していないときはWriterへ渡しません。
 
 CaptureSessionが動いていても、Writerへ渡すのは配信中だけです。
 CMSampleBufferのDataがreadyでない場合も早期returnし、Writerの状態遷移を単純に保ちます。
-Writerが受け取れないときにframeを貯めない判断は、Chapter 05で説明します。
+ReceiverのappendImmediatelyがfalseの場合、Sampleはそのbufferを保留せずdropします。生成済みsegmentの送信待ちとは別の制御です。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
@@ -1921,40 +1921,6 @@ HLS用Dataができたので、ここからは保存と公開です。
 
 ---
 
-<div class="kicker">SAME HLS · DIFFERENT DESTINATION</div>
-
-# 同じHLSを、MacまたはS3へ置く
-
-<div class="environment-map">
-  <div class="environment-row sample">
-    <b>公開サンプル</b><span>iPhone</span><i>HTTP PUT</i><span>Macのファイル保存</span><i>HTTP GET</i><span>ローカルViewer</span>
-  </div>
-  <div class="environment-row production">
-    <b>MomentNow</b><span>iPhone</span><i>署名付きURLへPUT</i><span>Amazon S3<br><small>object storage</small></span><i>CloudFront<br><small>CDN</small></i><span>Web Viewer</span>
-  </div>
-</div>
-
-<div class="bottom-claim">init.mp4とm4sのDataは、どちらもiPhoneが生成する</div>
-
-<!--
-### 話す
-
-保存先だけ比べると、サンプルはMac、MomentNowはS3です。MomentNowでは、CloudFrontを通して視聴者へ配ります。
-どちらも、HLSのDataを作るのはiPhoneです。まずサンプルの保存処理を見てから、S3での公開へ進みます。
-
-### 参考・質問対応（読み上げない）
-
-公開サンプルと個人アプリの対応です。
-サンプルはMacのファイル保存とローカルViewer、個人アプリはS3とCloudFrontです。端末が生成するHLSの構造は変わりません。
-S3はファイルをobjectとして保存するサービス、CloudFrontはそのファイルを視聴者の近くから配るCDNです。
-
-[Sources]
-- iosdc2026HLSSample/README.md
-- MomentNow-Lambda/AGENTS.md
--->
-
----
-
 <div class="kicker">ATOMIC REPLACE · PUBLIC SAMPLE</div>
 
 # 書き込み中は、古い完成ファイルを公開し続ける
@@ -2076,119 +2042,6 @@ HLSStreamPublisherの抜粋です。実装ではputPlaylistをretryingで包ん�
 
 ---
 
-<div class="kicker">MOMENTNOW · PUBLISH SEQUENCE</div>
-
-# MomentNowの保存と公開は3段階
-
-<div class="d">
- <div class="d-row"><div class="d-node blue fill"><span>① APIから取得</span><b>保存先URL</b><small>presign</small></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>② iPhoneからS3へ</span><b>DataをPUT</b><small>保存成功を確認</small></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>③ APIへ通知</span><b>commitで公開</b><small>APIがplaylistを更新</small></div></div>
- <p class="d-note">映像DataはiPhoneからS3へ直接送る</p>
-</div>
-<div class="bottom-claim">MomentNowの構成。SampleはiOS側でplaylistを更新する</div>
-
-<!--
-### 話す
-
-MomentNowでは、この順序を3段階にしています。まずAPIから保存先のURLを受け取り、次にsegmentのDataをS3へ直接PUTします。
-保存成功を確認してからcommitを呼び、API側でplaylistへ反映します。映像DataはAPIを経由しません。
-これはMomentNowで選んだ分担です。Sampleのように、iOS側でplaylistと公開順を管理する構成でも実現できます。
-
-### 参考・質問対応（読み上げない）
-
-MomentNowの書き込み処理は3段階です。
-S3へPUTするための署名付きURLを受け取り、segment本体を保存し、成功したあとにだけplaylistへ載せます。
-
-MomentNowではpresign API、S3 PUT、commit API、CloudFrontが担当します。
-commitは今回選んだ責務配置です。HLSに必須のAPIではなく、公開サンプルのようにiOS側でplaylistと公開順を管理する構成も可能です。
-公開サンプルはiOSがplaylist本文を生成し、MacのHTTPサーバーが受け取ったファイルを保存します。S3自体はHLSの必須要素ではありません。
-
-
-最初のinitialization Dataは1配信で一度だけ保存します。
-presignとPUTはinit・mediaの共通処理。initはkind: init / seq: nil、mediaはkind: segment / seq: seqを使います。
-media Dataは約2秒ごとに、seqに対応する署名付きURLを取得してPUTします。
-保存成功後にcommitし、サーバーへplaylistへ載せてよいseqを通知します。
-
-[Sources]
-- MomentNow-Lambda/src/presign.ts
-- MomentNow-Lambda/src/commit.ts
-- iosdc2026HLSSample/server/server.py
--->
-
----
-
-<div class="kicker">S3 PRESIGNED PUT URL</div>
-
-# S3へのPUTを、署名付きURLで許可する
-
-<div class="choice-compare">
-  <div class="choice muted"><span>DO NOT</span><b>AWS credentialを内包</b><small>漏えい範囲が広い</small></div>
-  <div class="choice-arrow">→</div>
-  <div class="choice selected"><span>PRESIGNED URL</span><b>S3へ1ファイルだけPUT</b><small>保存先 / 有効期限を署名</small></div>
-</div>
-
-<div class="bottom-claim">iPhoneは発行されたURLへDataをPUTするだけ。AWS credentialは持たない</div>
-
-```swift
-var request = URLRequest(url: presignedURL)
-request.httpMethod = "PUT"
-request.setValue(
-    contentType, forHTTPHeaderField: "Content-Type")
-request.httpBody = data
-```
-
-<!--
-### 話す
-
-S3へ保存するために、アプリへAWSの認証情報を持たせる代わりに、署名付きURLを発行しています。
-このURLで保存先と有効期限を限定します。iPhone側は、受け取ったURLへ通常のHTTP PUTでDataを送ります。
-
-### 操作・進行（読み上げない）
-
-[Optional detail: 時間が厳しい場合は省略]
-
-### 参考・質問対応（読み上げない）
-
-iOSアプリはS3のcredentialを持ちません。
-認証済みAPIが、S3の特定ファイルへPUTするためのpresigned URLを発行します。
-URLには保存先と有効期限が署名されているため、アプリへAWS credentialを配布する必要がありません。
-
-[Sources]
-- https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html
-- MomentNow-Lambda/src/presign.ts
--->
-
----
-
-<div class="kicker">SAVE BEFORE PUBLISH</div>
-
-# segmentの保存前に公開すると、<br>Viewerは404になる
-
-<div class="d">
- <div class="d-label d-warn">順序を逆にした場合</div>
- <div class="d-row"><div class="d-node warn"><b>playlistへ先に掲載</b></div><i class="d-arrow">→</i><div class="d-node warn"><b>ViewerがGET</b></div><i class="d-arrow">→</i><div class="d-node warn fill"><b>本体がまだない</b><small>404</small></div></div>
- <div class="d-label" style="margin-top:28px">今回の順序</div>
- <div class="d-row"><div class="d-node blue"><b>本体のPUT成功</b></div><i class="d-arrow">→</i><div class="d-node blue"><b>playlistへ掲載</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><b>Viewerが取得可能</b></div></div>
-</div>
-
-<!--
-### 話す
-
-順番を逆にするとどうなるか、という例です。
-playlistへ先に載せると、Playerはまだ存在しないsegmentを取りに行き、404になります。なので、保存成功を確認してから公開します。
-では、保存に失敗した場合はどうするかを見ます。
-
-### 参考・質問対応（読み上げない）
-
-順序が重要です。
-PUTの2xxを確認してからcommitします。逆なら、Playerがplaylistで見つけたURIをGETして404になります。
-公開サンプルは同じファイルを最大3回まで再送し、それでも失敗した場合はplaylist更新へ進まずerrorとして残します。
-
-[Sources]
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
--->
-
----
-
 <div class="kicker">RETRY · PUBLIC SAMPLE</div>
 
 # 同じPUTを最大3回試し、失敗したら公開を進めない
@@ -2228,63 +2081,74 @@ HTTP request自体の待ち時間もあるため、合計750 ms以内で必ず�
 
 ---
 
-<div class="kicker">UPLOAD ORDER · MOMENTNOW</div>
+<div class="kicker">SAME HLS · DIFFERENT DESTINATION</div>
 
-# uploadの完了順と、再生順は別に扱う
+# 同じHLSを、MacまたはS3へ置く
 
-<div class="d">
- <div class="d-axis"><span>upload開始</span><span>時間 →</span></div>
- <div class="d-lane"><b>segment 1</b><span class="d-bar blue" style="grid-column:2/10">upload</span><span style="grid-column:10/14">commit 1</span></div>
- <div class="d-lane"><b>segment 2</b><span class="d-bar blue" style="grid-column:3/7">upload</span><span style="grid-column:7/14">commit 2（先に完了）</span></div>
- <div class="d-lane"><b>segment 3</b><span class="d-bar blue" style="grid-column:4/11">upload</span><span style="grid-column:11/14">commit 3</span></div>
- <div class="d-row"><div class="d-node"><span>完了順の例</span><b>2 → 1 → 3</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>MomentNowの現状</span><b>sequence順へ整列</b><small>1 → 2 → 3</small></div></div>
+<div class="environment-map">
+  <div class="environment-row sample">
+    <b>Sample</b><span>iPhone</span><i>HTTP PUT</i><span>Macのファイル保存</span><i>HTTP GET</i><span>ローカルViewer</span>
+  </div>
+  <div class="environment-row production">
+    <b>MomentNow</b><span>iPhone</span><i>署名付きURLへPUT</i><span>Amazon S3<br><small>object storage</small></span><i>CloudFront<br><small>CDN</small></i><span>Web Viewer</span>
+  </div>
 </div>
-<div class="bottom-claim">整列だけでは、途中の欠番を待てない</div>
+
+<div class="bottom-claim">init.mp4とm4sのDataは、どちらもiPhoneが生成する</div>
 
 <!--
 ### 話す
 
-MomentNowでは、segmentごとに送信するTaskがあるため、後のsegmentのアップロードが先に終わることがあります。
-そこで、保存成功後のcommitではsequence順に並べます。ただ、並べ替えるだけでは、まだ届いていない番号をどう扱うかが残ります。
+ここまではMacへ保存するSampleの話でした。実際にインターネットへ公開するMomentNowでは、保存先にS3、配信にCloudFrontを使っています。
+アプリへAWSの認証情報を持たせず、APIから受け取った署名付きURLへDataをPUTします。映像を変換せず、iPhoneが作ったファイルを置く点は同じです。
+ここで、実際の配信で気を付けた公開順とキャッシュの話をします。
+
+### 参考・質問対応（読み上げない）
+
+公開サンプルと個人アプリの対応です。
+サンプルはMacのファイル保存とローカルViewer、個人アプリはS3とCloudFrontです。端末が生成するHLSの構造は変わりません。
+S3はファイルをobjectとして保存するサービス、CloudFrontはそのファイルを視聴者の近くから配るCDNです。
+
+[Sources]
+- iosdc2026HLSSample/README.md
+- MomentNow-Lambda/AGENTS.md
+-->
+
+---
+
+<div class="kicker">UPLOAD ORDER · MOMENTNOW</div>
+
+# 完了順に載せると、撮影順が崩れた
+
+<div class="d">
+ <div class="d-axis"><span>upload開始</span><span>時間 →</span></div>
+ <div class="d-lane"><b>segment 1</b><span class="d-bar blue" style="grid-column:2/10">upload</span><span style="grid-column:10/14">保存完了 1</span></div>
+ <div class="d-lane"><b>segment 2</b><span class="d-bar blue" style="grid-column:3/7">upload</span><span style="grid-column:7/14">保存完了 2（先）</span></div>
+ <div class="d-lane"><b>segment 3</b><span class="d-bar blue" style="grid-column:4/11">upload</span><span style="grid-column:11/14">保存完了 3</span></div>
+ <div class="d-row"><div class="d-node"><span>完了順に載せた場合（例）</span><b>2 → 1 → 3</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>対策：生成時の番号を使う</span><b>playlistを番号順に並べる</b><small>1 → 2 → 3</small></div></div>
+</div>
+<div class="bottom-claim">保存成功後、生成時の番号順にplaylistへ反映する</div>
+
+<!--
+### 話す
+
+MomentNowを動作検証したとき、アップロードが終わった順にm4sをplaylistへ追加すると、撮影した順番になりませんでした。
+後に撮影したsegmentのアップロードが、先に終わることがあるためです。そこで、生成時に付けた番号を使って、playlistを番号順に並べるようにしました。
+この保存済みsegmentをplaylistへ反映する処理を、MomentNowではcommit APIが担当します。Sampleは順番に送信しますが、複数の送信を並行させる場合は、完了順と撮影順を分けて扱う必要がありました。
 
 ### 参考・質問対応（読み上げない）
 
 MomentNowはsegmentごとにTaskでuploadするため、await中に完了順が入れ替わる可能性があります。
 各commitはそのsegmentのPUT成功後に行います。commit APIはsequence順へ整列します。
-右下の1・2・3は全segmentが揃った時点の順序です。次のページで、揃う前に何が公開されるかを区別します。
+図の2・1・3は処理順の模式例で、検証ログの実測値ではありません。右側の1・2・3は全segmentが揃った時点の順序です。
+commitはMomentNowで選んだ責務配置です。公開順はiOS側でも管理でき、HLSに必須のAPIではありません。
+
+欠番の扱い（質問対応のみ）:
+現在のcommit APIは欠番を待つ契約ではありません。1と3だけ保存済みなら、その2つを番号順に掲載します。
+連続した範囲だけを公開し、2が来るまで3を保留する制御は未実装の改善案です。番号順への整列で欠番も解決済みとは説明しません。
 
 [Sources]
-- MomentNow-Lambda/src/commit.ts
--->
-
----
-
-<div class="kicker">PUBLICATION GAP · CURRENT / PROPOSAL</div>
-
-# 欠番があるとき、どこまで公開するか
-
-<div class="d">
- <div class="d-label">segment 1・3が保存済み、segment 2はまだ届かない時点</div>
- <div class="d-queue"><span>1 保存済み</span><span class="warn">2 未到着</span><span>3 保存済み</span></div>
- <div class="d-pair" style="margin-top:24px">
-  <div class="d-node blue"><span>MomentNow · 現状</span><b>1・3を番号順に掲載</b><small>欠番は待たない</small><span class="d-chip blue">1</span><span class="d-chip blue">3</span></div>
-  <div class="d-node future"><span>改善案 · 未実装</span><b>連続した1だけを公開</b><small>3は2が届くまで保留</small><span class="d-chip blue">1</span><span class="d-chip missing">2待ち</span><span class="d-chip missing">3保留</span></div>
- </div>
-</div>
-<div class="bottom-claim">番号順への整列と、連続した範囲だけの公開は別の制御</div>
-
-<!--
-### 話す
-
-例えば1と3が届き、2がまだ届いていない場合です。現状は、欠番を待たず、届いたものをsequence順に並べます。
-改善するなら、2が届くまで3を保留し、連続した範囲だけを公開します。右側は今後の案で、まだ実装していません。
-
-### 参考・質問対応（読み上げない）
-
-1と3が保存され、2がまだ届かない例です。現在のcommit APIは欠番を待つ契約ではありません。
-改善するなら連続したsequenceまでの公開済み境界を管理し、2が来るまで3を保留します。これは未実装の設計案であり、現状の保証として説明しません。
-
-[Sources]
+- 発表者の動作検証：アップロード完了順にplaylistへ追加すると撮影順にならなかった
 - MomentNow-Lambda/src/commit.ts
 -->
 
@@ -2372,102 +2236,18 @@ class: chapter
 <div class="chapter-rule"></div>
 
 # 配信の完了
-<p>AVFoundation callback → Swift Task → final playlist</p>
+<p>撮影停止後も、生成・送信・写真保存の完了を確認する</p>
+
 
 <!--
 ### 話す
 
-最後に、処理が追いつかない場合と、停止時の完了を見ます。
-撮影を止めただけでは、生成も送信もすべて終わったことにはなりません。
-
-### 操作・進行（読み上げない）
-
-[Timing checkpoint: 30:00]
+最後に、配信を止めるときの処理です。撮影を止めても、最後のsegmentの生成や送信、写真保存はまだ残っています。
+それぞれ何の完了を待つかを確認します。
 
 ### 参考・質問対応（読み上げない）
 
-最後に、iOS上のcallback、Task、URLSessionを1本のライブ配信として整理します。
-焦点は、メディア処理をHTTP待ちから切り離す境界です。
-Writerが受け取れない問題と、生成済みsegmentが送信待ちになる問題を分けて説明します。
--->
-
----
-
-<div class="kicker">BACKPRESSURE · TWO LOCATIONS</div>
-
-# Writer側のdropと、生成後の送信待ち
-
-<div class="d">
- <div class="d-row d-backpressure"><div class="d-node"><span>生成前</span><b>CMSampleBuffer</b><small>frame / audio block</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>Writer</span><b>圧縮・分割</b></div><i class="d-arrow">→</i><div class="d-node blue fill"><span>生成後</span><b>segment Data</b><small>送信待ちの列</small></div><i class="d-arrow">→</i><div class="d-node blue"><span>HTTP Task</span><b>別に送信</b></div></div>
- <div class="d-pair" style="margin-top:24px"><div class="d-node warn"><span>Writer側 · 実装済み</span><b>受け取れないbufferをdrop</b><small>映像のカクつき・音声の欠けを許容</small></div><div class="d-node future"><span>送信側 · 改善案</span><b>滞留量の上限と停止判断</b><small>Sampleでは未実装</small></div></div>
-</div>
-<div class="bottom-claim">別の位置・別のデータに対する問題。送信待ちは現在、上限なし</div>
-
-<!--
-### 話す
-
-この図の左側と右側で、問題を分けます。
-左はWriterへ渡す前のbufferです。Receiverが受け取れない場合はそのbufferを落とすため、映像のカクつきや音声の欠けが起こり得ます。
-右は、すでにできたsegmentの送信待ちです。生成とHTTP送信を別に進めているので、送信が遅いとここに溜まります。
-Sampleには、この待ち量の上限がまだありません。上限や停止判断は今後の改善で、左のdropでは解決しません。
-
-### 参考・質問対応（読み上げない）
-
-生成前のCMSampleBufferと、生成後のsegment Dataを区別します。
-appendImmediatelyがfalseの場合にdropするのは前者です。生成済みsegmentの待ち行列には作用しません。
-Capture側のalwaysDiscardsLateVideoFrames = trueも、古い映像frameを溜め続けないための別の設定です。video callbackへ渡す前の制御で、Receiverのfalseとは別です。
-画の欠落を避ける録画とはトレードオフがあります。Sampleでは同じDataOutputから保存用Writerにも渡すため、Capture側で落ちたframeは保存側にも届きません。
-この設定も生成済みsegmentのHTTP待ちを解消しません。
-生成に対して送信が遅い状態が続くと滞留が増えます。上限と超過時の停止判断は今後の改善として扱い、ライブ遅延全体を解消する実装済み対策とは説明しません。
-
-
-AVAssetWriterDelegate自体のcallback queueをwritingQueueと断定しません。Sampleのdelegate実装は受け取ったDataをwritingQueue.asyncへ渡し、そこでsequenceとContinuationを操作します。
-continuation.yieldでHLSFragmentを渡したらすぐ戻り、PublisherのTaskがfor awaitで取り出してPUTとplaylist更新を順番にawaitします。
-図は処理の重なりの模式図で、実行時間は実測ではありません。AsyncThrowingStreamは既定の無制限bufferなので、送信が遅いと生成済みDataが滞留します。
-
-[Sources]
-- https://developer.apple.com/library/archive/technotes/tn2445/_index.html
-- https://developer.apple.com/documentation/avfoundation/avassetwriterinput/samplebufferreceiver/appendimmediately(_:)
-- iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSSegmentRecorder.swift
--->
-
----
-
-<div class="kicker">WRITER FINISH</div>
-
-# HLS用Writerを、最後に渡した時刻で終了する
-
-<div class="stop-flow">
-  <div><b>lastAdjustedPTS</b><span>最後に受け入れたPTS</span></div>
-  <i>→</i>
-  <div><b>endSession</b><span>範囲を閉じる</span></div>
-  <i>→</i>
-  <div><b>Receiver.finish</b><span>video / audio</span></div>
-  <i>→</i>
-  <div><b>finishWriting</b><span>最後のDataを出力</span></div>
-</div>
-
-```swift
-if lastAdjustedPTS.isValid {
-    writer.endSession(atSourceTime: lastAdjustedPTS)
-}
-```
-
-<!--
-### 話す
-
-HLS用Writerは、最後に渡したデータの補正後の時刻で終了します。
-Receiverの入力を終え、finishWritingの完了を待ちます。このとき最後のsegmentが出てくる可能性があるので、終了操作だけしてすぐに処理を閉じないようにします。
-
-### 操作・進行（読み上げない）
-
-[Optional detail: 時間が厳しい場合は省略]
-
-### 参考・質問対応（読み上げない）
-
-終了時刻も補正後のPTSを使います。
-ここはHLS用Writerの終了手順です。保存用WriterもReceiverをfinishしてfinishWritingの完了を待ち、completedかつ映像・音声が揃っている場合だけ写真保存へ進みます。
-finishWritingによって最後のsegmentがdelegateへ届く可能性があるため、stopはその完了まで待ちます。
+停止の順序と、HTTP送信・写真保存の独立した結果を説明します。
 -->
 
 ---
@@ -2488,13 +2268,16 @@ finishWritingによって最後のsegmentがdelegateへ届く可能性がある�
 
 停止の順番です。まずCaptureを止め、すでにqueueへ入ったcallbackが終わるのを待ちます。
 次にHLS用Writerを終了し、最後のDataを受け取ってから受け渡しを閉じます。その後、保存用Writerを終了してMP4を完成させます。
-片方で失敗していても、もう片方の結果は別に確認します。
+片方で失敗していても、もう片方の結果は別に確認します。送信は別のTaskで進んでいて、遅い回線では待ちが溜まります。Sampleでは、この送信待ちの上限はまだ設けていません。
 
 ### 参考・質問対応（読み上げない）
 
 HLSSegmentRecorder.stopの現在の順序です。まずsessionQueue上でCaptureSession.stopRunningの完了を待ち、その後writingQueue上で投入済みcallbackの後に終了処理を行います。
 HLS Writerをfinishし、最後のDataを受けてfragment streamを閉じます。その後、保存用WriterをfinishしてMP4を完成させます。
 この2つのWriterのfinishを同時に開始する実装ではありません。途中で一方が失敗していても、もう一方の結果を独立に扱います。
+
+HLSのendSessionには最後に受け入れた補正後のPTSを使います。Receiver.finishの後、finishWritingで最後のDataが届く可能性があるため完了まで待ちます。
+AVAssetWriterDelegateの値はwritingQueueへ渡し、AsyncThrowingStreamから送信Taskへ受け渡します。送信待ちの上限と超過時の停止判断は未実装の改善案です。入力bufferのdropでこの送信待ちが解消するわけではありません。
 
 [Sources]
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
@@ -2534,43 +2317,6 @@ SampleHLSStreamerはRecorder.stopでMP4の結果を受け取るとonLocalRecordi
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/SampleHLSStreamer.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/PhotoVideoSaver.swift
 - iosdc2026HLSSample/ios/iosdc2026HLSSample/HLSStreamPublisher.swift
--->
-
----
-
-<div class="kicker">MOMENTNOW · OPERATIONAL RESPONSIBILITIES</div>
-
-# 4つの運用制御を、配信の担当箇所へ配置
-
-<div class="d">
- <div class="d-row"><div class="d-node"><span>iPhone / user</span><b>HLSを生成</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>S3</span><b>Dataを保存</b></div><i class="d-arrow">→</i><div class="d-node blue"><span>playlist / CDN</span><b>Viewerへ公開</b></div></div>
- <div class="d-row"><div class="d-node"><span>AUTH</span><b>誰の配信か</b><small>user / group</small></div><div class="d-node blue"><span>PRESIGN</span><b>どこへPUTできるか</b><small>ファイル・期限を限定</small></div><div class="d-node blue"><span>COMMIT</span><b>何を公開するか</b><small>playlist更新を制御</small></div><div class="d-node"><span>DELIVERY</span><b>誰に配るか</b><small>CloudFront / ticket / status</small></div></div>
-</div>
-<div class="bottom-claim">MomentNowで選んだ配置。SampleはiOS側でplaylistと公開順を管理</div>
-
-<!--
-### 話す
-
-MomentNowでは、ここまでの仕組みに、認証、保存先を限定する署名URL、playlistの更新制御、CDN配信を組み合わせました。
-これらはアプリの運用のために選んだ構成で、映像の再エンコードはしません。
-公開順をiOS側で管理することもできます。commit APIへまとめたのは、今回の責務の置き方です。
-
-### 参考・質問対応（読み上げない）
-
-iosdc2026HLSSampleはMacを小さなobject serverとして使います。
-個人アプリは先にpresignしてS3へPUTし、Lambdaのcommitでplaylistを更新します。生成するDataと保存順序は共通です。
-
-サンプルから個人アプリへ足すものです。
-認証、署名URL、playlist競合制御、CDN配信。どれも重要ですが、映像の再エンコードではありません。
-4つすべてがHLSの必須構成という意味ではなく、MomentNowの用途に合わせて採用した構成です。
-公開順もiOS側で制御できます。今回のサーバー側commitはplaylist更新時の競合制御もまとめた責務配置であり、唯一の正解とは位置づけません。
-
-[Sources]
-- iosdc2026HLSSample/README.md
-- MomentNow-Lambda/src/presign.ts
-- MomentNow-Lambda/src/commit.ts
-- MomentNow-Lambda/src/create_stream.ts
-- MomentNow-Lambda/src/ticket.ts
 -->
 
 ---
