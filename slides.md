@@ -108,7 +108,7 @@ Writerへ渡す時刻の扱いは、生成処理の中で短く触れます。
 
 <div class="kicker">WHY</div>
 
-# 撮影とuploadを重ね、<br>共有までの待ち時間を短くする
+# 撮影後のアップロード時間を短縮したかった
 
 <div class="d">
   <div class="d-lane d-axis-grid"><b>時間 →</b><span style="grid-column:2/5">撮影開始</span><span style="grid-column:10/14">撮影停止</span></div>
