@@ -1584,7 +1584,7 @@ IDRは前のframeを参照せず、そこから再生を開始できるkeyframe�
 
 <div class="d d-pair">
  <div class="d-node blue"><span>今回の希望間隔：2秒</span><b>短い断片で順次送信</b><small>1分あたり約30 segment<br>生成完了までの待ちを短くする</small></div>
- <div class="d-node"><span>Appleの一般的な目安：6秒</span><b>1回にまとめる量を増やす</b><small>1分あたり約10 segment<br>segment取得・PUTの回数が少ない</small></div>
+ <div class="d-node"><span>Appleのサンプル：6秒</span><b>1回にまとめる量を増やす</b><small>1分あたり約10 segment<br>segment取得・PUTの回数が少ない</small></div>
 </div>
 <p class="d-note">IDRの「約2秒ごと」の推奨と、segment長の目安は別の設定</p>
 <div class="bottom-claim">2秒は今回の選択。HLSの必須値でも、視聴遅延の保証でもない</div>
@@ -2089,7 +2089,7 @@ class: chapter
 <div class="chapter-no">05</div>
 <div class="chapter-rule"></div>
 
-# 生成を止めず、<br>配信の完了まで待つ
+# 配信の完了
 <p>AVFoundation callback → Swift Task → final playlist</p>
 
 <!--
@@ -2260,7 +2260,7 @@ iosdc2026HLSSampleはMacを小さなobject serverとして使います。
 
 ---
 
-<div class="kicker">MOMENTNOW · REFLECTION</div>
+<div class="kicker">まとめ</div>
 
 # 実ユーザーの声を、改善につなげきれていない
 
@@ -2289,7 +2289,7 @@ layout: center
 class: closing
 ---
 
-<div class="kicker">TAKEAWAYS</div>
+<div class="kicker">まとめ</div>
 
 # 端末内で生成し、保存できた範囲を公開する
 
